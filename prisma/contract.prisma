@@ -1,0 +1,13 @@
+model Manager {
+  id       String  @id
+  name     String
+  hasBonus Boolean
+}
+
+model DrawRecord {
+  id          String @id
+  leagueName  String
+  managerName String
+  teamName    String
+  hasBonus    Boolean
+}

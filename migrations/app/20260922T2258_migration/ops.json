@@ -1,0 +1,125 @@
+[
+  {
+    "id": "dropColumn.manager.createdAt",
+    "label": "Drop column \"createdAt\" from \"manager\"",
+    "operationClass": "destructive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "createdAt",
+        "table": "manager"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"createdAt\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "manager",
+          "createdAt"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "drop column \"createdAt\"",
+        "sql": "ALTER TABLE \"public\".\"manager\" DROP COLUMN \"createdAt\""
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"createdAt\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "manager",
+          "createdAt"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "dropDefault.manager.hasBonus",
+    "label": "Drop default on \"manager\".\"hasBonus\"",
+    "operationClass": "destructive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "hasBonus",
+        "table": "manager"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"hasBonus\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "manager",
+          "hasBonus"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "drop default on \"hasBonus\"",
+        "sql": "ALTER TABLE \"public\".\"manager\" ALTER COLUMN \"hasBonus\" DROP DEFAULT"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"hasBonus\" has no default",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3 AND \"column_default\" IS NULL)) AS \"result\"",
+        "params": [
+          "public",
+          "manager",
+          "hasBonus"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.drawRecord",
+    "label": "Create table \"drawRecord\"",
+    "summary": "Creates table \"drawRecord\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "drawRecord"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"drawRecord\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"drawRecord\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"drawRecord\"",
+        "sql": "CREATE TABLE \"public\".\"drawRecord\" (\n  \"hasBonus\" bool NOT NULL,\n  \"id\" text NOT NULL,\n  \"leagueName\" text NOT NULL,\n  \"managerName\" text NOT NULL,\n  \"teamName\" text NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"drawRecord\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"drawRecord\""
+        ]
+      }
+    ]
+  }
+]

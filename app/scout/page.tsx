@@ -4,15 +4,18 @@ import { useState, useEffect, useCallback } from "react";
 import { Search, Filter, Loader2, ArrowUpDown, RefreshCw } from "lucide-react";
 
 interface Player {
-  id: string;
+  id: number;
   name: string;
-  position: string;
-  specificPosition?: string;
-  age: number;
+  full_name?: string;
+  position: number | string;
+  specific_position?: number;
   stat_ovr: number;
+  age: number;
   nationality_name?: string;
+  nationality_code?: string;
   league_name?: string;
-  value?: number;
+  team_name?: string;
+  base_value?: number;
 }
 
 export default function ScoutPage() {
@@ -20,15 +23,16 @@ export default function ScoutPage() {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Estados dos Filtros (iniciam vazios)
+  // Estados dos Filtros
   const [name, setName] = useState("");
   const [position, setPosition] = useState("");
+  const [nationality, setNationality] = useState("");
   const [ratingMin, setRatingMin] = useState("");
   const [ratingMax, setRatingMax] = useState("");
   const [ageMin, setAgeMin] = useState("");
   const [ageMax, setAgeMax] = useState("");
 
-  // Ordenação e Paginação
+  // Paginação e Ordenação
   const [offset, setOffset] = useState(0);
   const [sortOrder, setSortOrder] = useState<"ASC" | "DESC">("DESC");
 
@@ -39,9 +43,9 @@ export default function ScoutPage() {
     try {
       const params = new URLSearchParams();
 
-      // Envia os parâmetros apenas quando estiverem preenchidos pelo usuário
       if (name.trim()) params.append("name", name.trim());
       if (position) params.append("position", position);
+      if (nationality) params.append("nationality", nationality);
       if (ageMin) params.append("ageMin", ageMin);
       if (ageMax) params.append("ageMax", ageMax);
       if (ratingMin) params.append("ratingMin", ratingMin);
@@ -82,7 +86,7 @@ export default function ScoutPage() {
     } finally {
       setLoading(false);
     }
-  }, [name, position, ageMin, ageMax, ratingMin, ratingMax, offset, sortOrder]);
+  }, [name, position, nationality, ageMin, ageMax, ratingMin, ratingMax, offset, sortOrder]);
 
   useEffect(() => {
     fetchPlayers();
@@ -97,6 +101,7 @@ export default function ScoutPage() {
   const handleResetFilters = () => {
     setName("");
     setPosition("");
+    setNationality("");
     setRatingMin("");
     setRatingMax("");
     setAgeMin("");
@@ -133,7 +138,7 @@ export default function ScoutPage() {
           </button>
         </div>
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
           {/* NOME */}
           <div>
             <label className="mb-1 block text-xs font-medium text-gray-400">
@@ -148,7 +153,7 @@ export default function ScoutPage() {
             />
           </div>
 
-          {/* POSIÇÃO - Mapeada para os IDs Numéricos da API */}
+          {/* POSIÇÃO */}
           <div>
             <label className="mb-1 block text-xs font-medium text-gray-400">
               Posição
@@ -159,14 +164,41 @@ export default function ScoutPage() {
               className="w-full rounded-lg border border-white/10 bg-[#101416] px-3 py-2 text-sm text-white focus:border-emerald-500 focus:outline-none"
             >
               <option value="">Todas</option>
-              <option value="4">Ataque (ATT)</option>
-              <option value="3">Meio-Campo (MID)</option>
-              <option value="2">Defesa (DEF)</option>
-              <option value="1">Goleiro (POR / GK)</option>
+              <option value="1">Ataque (ATT)</option>
+              <option value="2">Meio-Campo (MID)</option>
+              <option value="3">Defesa (DEF)</option>
+              <option value="4">Goleiro (POR / GK)</option>
             </select>
           </div>
 
-          {/* OVERALL (RATING) */}
+          {/* NACIONALIDADE */}
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-400">
+              Nacionalidade
+            </label>
+            <select
+              value={nationality}
+              onChange={(e) => setNationality(e.target.value)}
+              className="w-full rounded-lg border border-white/10 bg-[#101416] px-3 py-2 text-sm text-white focus:border-emerald-500 focus:outline-none"
+            >
+              <option value="">Todas</option>
+              <option value="Spanish">Espanha (Spanish)</option>
+              <option value="Brazilian">Brasil (Brazilian)</option>
+              <option value="Argentinian">Argentina (Argentinian)</option>
+              <option value="French">França (French)</option>
+              <option value="Portuguese">Portugal (Portuguese)</option>
+              <option value="English">Inglaterra (English)</option>
+
+              <option value="German">Alemanha (German)</option>
+              <option value="Italian">Itália (Italian)</option>
+              <option value="Dutch">Holanda (Dutch)</option>
+              <option value="Belgian">Bélgica (Belgian)</option>
+              <option value="Uruguayan">Uruguai (Uruguayan)</option>
+              <option value="Colombian">Colômbia (Colombian)</option>
+            </select>
+          </div>
+
+          {/* OVERALL */}
           <div>
             <label className="mb-1 block text-xs font-medium text-gray-400">
               Overall (Mín / Máx)
@@ -272,34 +304,37 @@ export default function ScoutPage() {
               <thead className="border-b border-white/10 bg-[#101416] text-xs uppercase text-gray-400">
                 <tr>
                   <th className="px-5 py-3">Jogador</th>
-                  <th className="px-5 py-3">Posição</th>
+                  <th className="px-5 py-3">Time / Liga</th>
                   <th className="px-5 py-3">Idade</th>
-                  <th className="px-5 py-3">Nacionalidade / Liga</th>
+                  <th className="px-5 py-3">Nacionalidade</th>
                   <th className="px-5 py-3 text-right">Overall</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
-                {players.map((player, idx) => (
+                {players.map((player) => (
                   <tr
-                    key={player.id || idx}
+                    key={player.id}
                     className="transition hover:bg-white/5"
                   >
                     <td className="px-5 py-4 font-semibold text-white">
                       {player.name}
+                      {player.full_name && player.full_name !== player.name && (
+                        <span className="block text-xs text-gray-500 font-normal">
+                          {player.full_name}
+                        </span>
+                      )}
                     </td>
-                    <td className="px-5 py-4">
-                      <span className="rounded bg-white/5 px-2.5 py-1 text-xs font-medium text-gray-300">
-                        {player.specificPosition || player.position || "N/A"}
-                      </span>
+                    <td className="px-5 py-4 text-gray-300">
+                      <div>{player.team_name || "-"}</div>
+                      <div className="text-xs text-gray-500">
+                        {player.league_name || ""}
+                      </div>
                     </td>
                     <td className="px-5 py-4 text-gray-400">
                       {player.age ? `${player.age} anos` : "N/A"}
                     </td>
                     <td className="px-5 py-4 text-gray-400">
-                      <div>{player.nationality_name || "-"}</div>
-                      <div className="text-xs text-gray-500">
-                        {player.league_name || ""}
-                      </div>
+                      {player.nationality_name || "-"}
                     </td>
                     <td className="px-5 py-4 text-right">
                       <span className="inline-block rounded-lg bg-emerald-500/15 px-3 py-1 font-bold text-emerald-400">

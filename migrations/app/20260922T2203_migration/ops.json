@@ -1,0 +1,58 @@
+[
+  {
+    "id": "schema.public",
+    "label": "Create schema \"public\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres"
+    },
+    "precheck": [],
+    "execute": [
+      {
+        "description": "Create schema \"public\"",
+        "sql": "CREATE SCHEMA IF NOT EXISTS \"public\"",
+        "params": []
+      }
+    ],
+    "postcheck": []
+  },
+  {
+    "id": "table.manager",
+    "label": "Create table \"manager\"",
+    "summary": "Creates table \"manager\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "manager"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"manager\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"manager\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"manager\"",
+        "sql": "CREATE TABLE \"public\".\"manager\" (\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"hasBonus\" bool DEFAULT false NOT NULL,\n  \"id\" text NOT NULL,\n  \"name\" text NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"manager\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"manager\""
+        ]
+      }
+    ]
+  }
+]

@@ -16,10 +16,10 @@ import {
 const menu = [
   { name: "Dashboard", icon: HomeIcon, href: "/" },
   { name: "Campeonatos", icon: Trophy, href: "/campeonatos" },
-  { name: "Managers", icon: Users, href: "/managers" },
+  { name: "Treinadores", icon: Users, href: "/managers" },
   { name: "Sorteio de Times", icon: Shuffle, href: "/sorteio" },
   { name: "Transferências", icon: ArrowLeftRight, href: "/transferencias" },
-  { name: "Scout", icon: Search, href: "/scout" },
+  { name: "Olheiro", icon: Search, href: "/scout" },
   { name: "Ranking", icon: BarChart3, href: "/ranking" },
   { name: "Histórico", icon: History, href: "/historico" },
 ];
