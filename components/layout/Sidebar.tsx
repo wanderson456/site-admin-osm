@@ -28,17 +28,7 @@ export default function Sidebar() {
   return (
     <aside className="hidden w-64 flex-col border-r border-white/10 bg-[#171b1e] md:flex">
 
-      <div className="flex h-20 items-center border-b border-white/10 px-6">
-        <div>
-          <h1 className="text-xl font-bold">
-            OSM <span className="text-emerald-400">BAD BOYS</span>
-          </h1>
-
-          <p className="text-xs text-gray-500">
-            Administração
-          </p>
-        </div>
-      </div>
+      
 
       <nav className="flex-1 p-4">
 
@@ -65,15 +55,6 @@ export default function Sidebar() {
 
       </nav>
 
-      <div className="border-t border-white/10 p-4">
-        <Link
-          href="/configuracoes"
-          className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-sm text-gray-400 hover:bg-white/5 hover:text-white"
-        >
-          <Settings size={19} />
-          Configurações
-        </Link>
-      </div>
 
     </aside>
   );

@@ -5,25 +5,10 @@ import {
   Users,
   Shuffle,
   ArrowLeftRight,
-  Search,
   BarChart3,
-  History,
-  Settings,
-  Home as HomeIcon,
   ChevronRight,
   Crown,
 } from "lucide-react";
-
-const menu = [
-  { name: "Dashboard", icon: HomeIcon, active: true },
-  { name: "Campeonatos", icon: Trophy },
-  { name: "Managers", icon: Users },
-  { name: "Sorteio de Times", icon: Shuffle },
-  { name: "Transferências", icon: ArrowLeftRight },
-  { name: "Scout", icon: Search },
-  { name: "Ranking", icon: BarChart3 },
-  { name: "Histórico", icon: History },
-];
 
 const ranking = [
   {
@@ -81,324 +66,148 @@ const transfers = [
 
 export default function Home() {
   return (
-    <main className="min-h-screen bg-[#101315] text-white">
-      <div className="flex min-h-screen">
+    <div className="p-5 md:p-8">
+      {/* TÍTULO */}
+      <div className="mb-7 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+        <div>
+          <p className="mb-1 text-sm text-gray-500">Temporada 2026/3</p>
+          <h1 className="text-3xl font-bold">Dashboard</h1>
+        </div>
 
-        {/* MENU LATERAL */}
-        <aside className="hidden w-64 flex-col border-r border-white/10 bg-[#171b1e] md:flex">
+        <button className="flex items-center justify-center gap-2 rounded-lg bg-emerald-500 px-5 py-3 text-sm font-semibold text-black transition hover:bg-emerald-400">
+          <Shuffle size={18} />
+          Sortear Times
+        </button>
+      </div>
 
-          <div className="flex h-20 items-center border-b border-white/10 px-6">
-            <div>
-              <h1 className="text-xl font-bold">
-                OSM <span className="text-emerald-400">BAD BOYS</span>
-              </h1>
-
-              <p className="text-xs text-gray-500">
-                Administração
-              </p>
-            </div>
+      {/* CAMPEONATO */}
+      <div className="mb-6 rounded-xl border border-white/10 bg-[#171c1f] p-5">
+        <div className="mb-5 flex items-center justify-between">
+          <div>
+            <p className="text-xs uppercase tracking-wide text-gray-500">
+              Campeonato
+            </p>
+            <h2 className="mt-1 text-xl font-bold">Campeonato Brasileiro</h2>
           </div>
 
-          <nav className="flex-1 p-4">
+          <div className="hidden items-center gap-2 rounded-full bg-emerald-500/10 px-3 py-1.5 text-xs text-emerald-400 sm:flex">
+            <span className="h-2 w-2 rounded-full bg-emerald-400" />
+            Em andamento
+          </div>
+        </div>
 
-            <p className="mb-3 px-3 text-xs font-semibold uppercase tracking-wider text-gray-500">
-              Principal
-            </p>
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          <Stat
+            label="Managers"
+            value="12"
+            icon={<Users size={19} />}
+          />
+          <Stat
+            label="Rodada"
+            value="8"
+            icon={<Trophy size={19} />}
+          />
+          <Stat
+            label="Jogos"
+            value="84"
+            icon={<BarChart3 size={19} />}
+          />
+          <Stat
+            label="Transferências"
+            value="37"
+            icon={<ArrowLeftRight size={19} />}
+          />
+        </div>
+      </div>
 
-            <div className="space-y-1">
-              {menu.map((item) => {
-                const Icon = item.icon;
-
-                return (
-                  <button
-                    key={item.name}
-                    className={`flex w-full items-center gap-3 rounded-lg px-3 py-3 text-sm transition ${
-                      item.active
-                        ? "bg-emerald-500/15 text-emerald-400"
-                        : "text-gray-400 hover:bg-white/5 hover:text-white"
-                    }`}
-                  >
-                    <Icon size={19} />
-                    {item.name}
-                  </button>
-                );
-              })}
+      {/* DUAS COLUNAS */}
+      <div className="grid gap-6 xl:grid-cols-2">
+        {/* CLASSIFICAÇÃO */}
+        <div className="rounded-xl border border-white/10 bg-[#171c1f]">
+          <div className="flex items-center justify-between border-b border-white/10 p-5">
+            <div>
+              <h2 className="font-semibold">Classificação</h2>
+              <p className="text-xs text-gray-500">Campeonato atual</p>
             </div>
 
-          </nav>
-
-          <div className="border-t border-white/10 p-4">
-            <button className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-sm text-gray-400 hover:bg-white/5 hover:text-white">
-              <Settings size={19} />
-              Configurações
+            <button className="flex items-center gap-1 text-xs text-emerald-400">
+              Ver completa
+              <ChevronRight size={15} />
             </button>
           </div>
 
-        </aside>
+          <div className="divide-y divide-white/5">
+            {ranking.map((item) => (
+              <div
+                key={item.pos}
+                className="flex items-center gap-4 px-5 py-4"
+              >
+                <div
+                  className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold ${
+                    item.pos === 1
+                      ? "bg-yellow-500/20 text-yellow-400"
+                      : "bg-white/5 text-gray-400"
+                  }`}
+                >
+                  {item.pos === 1 ? <Crown size={16} /> : item.pos}
+                </div>
 
-        {/* ÁREA PRINCIPAL */}
-        <section className="flex-1">
+                <div className="flex-1">
+                  <p className="text-sm font-medium">{item.manager}</p>
+                  <p className="text-xs text-gray-500">{item.team}</p>
+                </div>
 
-          {/* HEADER */}
-          <header className="flex h-20 items-center justify-between border-b border-white/10 bg-[#15191b] px-5 md:px-8">
+                <div className="text-right">
+                  <p className="font-bold">{item.pts}</p>
+                  <p className="text-[10px] uppercase text-gray-600">pontos</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
 
+        {/* TRANSFERÊNCIAS */}
+        <div className="rounded-xl border border-white/10 bg-[#171c1f]">
+          <div className="flex items-center justify-between border-b border-white/10 p-5">
             <div>
-              <p className="text-xs text-gray-500">
-                CAMPEONATO ATUAL
-              </p>
-
-              <h2 className="text-lg font-semibold">
-                Campeonato Brasileiro
-              </h2>
+              <h2 className="font-semibold">Últimas transferências</h2>
+              <p className="text-xs text-gray-500">Movimentações recentes</p>
             </div>
 
-            <div className="flex items-center gap-4">
-
-              <div className="hidden text-right sm:block">
-                <p className="text-sm font-medium">
-                  Administrador
-                </p>
-
-                <p className="text-xs text-gray-500">
-                  OSM Group
-                </p>
-              </div>
-
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-500 font-bold text-black">
-                A
-              </div>
-
-            </div>
-
-          </header>
-
-          {/* CONTEÚDO */}
-          <div className="p-5 md:p-8">
-
-            {/* TÍTULO */}
-            <div className="mb-7 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-
-              <div>
-                <p className="mb-1 text-sm text-gray-500">
-                  Temporada 2026/3
-                </p>
-
-                <h1 className="text-3xl font-bold">
-                  Dashboard
-                </h1>
-              </div>
-
-              <button className="flex items-center justify-center gap-2 rounded-lg bg-emerald-500 px-5 py-3 text-sm font-semibold text-black transition hover:bg-emerald-400">
-                <Shuffle size={18} />
-                Sortear Times
-              </button>
-
-            </div>
-
-            {/* CAMPEONATO */}
-            <div className="mb-6 rounded-xl border border-white/10 bg-[#171c1f] p-5">
-
-              <div className="mb-5 flex items-center justify-between">
-
-                <div>
-                  <p className="text-xs uppercase tracking-wide text-gray-500">
-                    Campeonato
-                  </p>
-
-                  <h2 className="mt-1 text-xl font-bold">
-                    Campeonato Brasileiro
-                  </h2>
-                </div>
-
-                <div className="hidden items-center gap-2 rounded-full bg-emerald-500/10 px-3 py-1.5 text-xs text-emerald-400 sm:flex">
-                  <span className="h-2 w-2 rounded-full bg-emerald-400" />
-                  Em andamento
-                </div>
-
-              </div>
-
-              <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-
-                <Stat
-                  label="Managers"
-                  value="12"
-                  icon={<Users size={19} />}
-                />
-
-                <Stat
-                  label="Rodada"
-                  value="8"
-                  icon={<Trophy size={19} />}
-                />
-
-                <Stat
-                  label="Jogos"
-                  value="84"
-                  icon={<BarChart3 size={19} />}
-                />
-
-                <Stat
-                  label="Transferências"
-                  value="37"
-                  icon={<ArrowLeftRight size={19} />}
-                />
-
-              </div>
-
-            </div>
-
-            {/* DUAS COLUNAS */}
-            <div className="grid gap-6 xl:grid-cols-2">
-
-              {/* CLASSIFICAÇÃO */}
-              <div className="rounded-xl border border-white/10 bg-[#171c1f]">
-
-                <div className="flex items-center justify-between border-b border-white/10 p-5">
-
-                  <div>
-                    <h2 className="font-semibold">
-                      Classificação
-                    </h2>
-
-                    <p className="text-xs text-gray-500">
-                      Campeonato atual
-                    </p>
-                  </div>
-
-                  <button className="flex items-center gap-1 text-xs text-emerald-400">
-                    Ver completa
-                    <ChevronRight size={15} />
-                  </button>
-
-                </div>
-
-                <div className="divide-y divide-white/5">
-
-                  {ranking.map((item) => (
-                    <div
-                      key={item.pos}
-                      className="flex items-center gap-4 px-5 py-4"
-                    >
-
-                      <div
-                        className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold ${
-                          item.pos === 1
-                            ? "bg-yellow-500/20 text-yellow-400"
-                            : "bg-white/5 text-gray-400"
-                        }`}
-                      >
-                        {item.pos === 1 ? (
-                          <Crown size={16} />
-                        ) : (
-                          item.pos
-                        )}
-                      </div>
-
-                      <div className="flex-1">
-
-                        <p className="text-sm font-medium">
-                          {item.manager}
-                        </p>
-
-                        <p className="text-xs text-gray-500">
-                          {item.team}
-                        </p>
-
-                      </div>
-
-                      <div className="text-right">
-
-                        <p className="font-bold">
-                          {item.pts}
-                        </p>
-
-                        <p className="text-[10px] uppercase text-gray-600">
-                          pontos
-                        </p>
-
-                      </div>
-
-                    </div>
-                  ))}
-
-                </div>
-
-              </div>
-
-              {/* TRANSFERÊNCIAS */}
-              <div className="rounded-xl border border-white/10 bg-[#171c1f]">
-
-                <div className="flex items-center justify-between border-b border-white/10 p-5">
-
-                  <div>
-                    <h2 className="font-semibold">
-                      Últimas transferências
-                    </h2>
-
-                    <p className="text-xs text-gray-500">
-                      Movimentações recentes
-                    </p>
-                  </div>
-
-                  <button className="flex items-center gap-1 text-xs text-emerald-400">
-                    Ver todas
-                    <ChevronRight size={15} />
-                  </button>
-
-                </div>
-
-                <div className="divide-y divide-white/5">
-
-                  {transfers.map((transfer) => (
-                    <div
-                      key={transfer.player}
-                      className="px-5 py-4"
-                    >
-
-                      <div className="flex items-center justify-between">
-
-                        <div>
-
-                          <p className="text-sm font-semibold">
-                            {transfer.player}
-                          </p>
-
-                          <p className="mt-1 text-xs text-gray-500">
-                            {transfer.from}
-                            <span className="mx-2 text-emerald-400">
-                              →
-                            </span>
-                            {transfer.to}
-                          </p>
-
-                        </div>
-
-                        <ArrowLeftRight
-                          size={17}
-                          className="text-gray-600"
-                        />
-
-                      </div>
-
-                      <p className="mt-2 text-[11px] text-gray-600">
-                        Contratado por {transfer.manager}
-                      </p>
-
-                    </div>
-                  ))}
-
-                </div>
-
-              </div>
-
-            </div>
-
+            <button className="flex items-center gap-1 text-xs text-emerald-400">
+              Ver todas
+              <ChevronRight size={15} />
+            </button>
           </div>
 
-        </section>
+          <div className="divide-y divide-white/5">
+            {transfers.map((transfer) => (
+              <div key={transfer.player} className="px-5 py-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-semibold">{transfer.player}</p>
+                    <p className="mt-1 text-xs text-gray-500">
+                      {transfer.from}
+                      <span className="mx-2 text-emerald-400">→</span>
+                      {transfer.to}
+                    </p>
+                  </div>
 
+                  <ArrowLeftRight
+                    size={17}
+                    className="text-gray-600"
+                  />
+                </div>
+
+                <p className="mt-2 text-[11px] text-gray-600">
+                  Contratado por {transfer.manager}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
-    </main>
+    </div>
   );
 }
 
@@ -413,23 +222,12 @@ function Stat({
 }) {
   return (
     <div className="rounded-lg bg-[#101416] p-4">
-
       <div className="mb-3 flex items-center justify-between">
-
-        <span className="text-xs text-gray-500">
-          {label}
-        </span>
-
-        <span className="text-emerald-400">
-          {icon}
-        </span>
-
+        <span className="text-xs text-gray-500">{label}</span>
+        <span className="text-emerald-400">{icon}</span>
       </div>
 
-      <p className="text-2xl font-bold">
-        {value}
-      </p>
-
+      <p className="text-2xl font-bold">{value}</p>
     </div>
   );
 }

@@ -15,24 +15,21 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pt-BR">
-      <body className="min-h-screen bg-[#101315] text-white">
-
-        <div className="flex min-h-screen">
-
+      <body className="h-screen overflow-hidden bg-[#101315] text-white">
+        <div className="flex h-full w-full">
+          {/* Sidebar fixo na esquerda */}
           <Sidebar />
 
-          <section className="flex min-w-0 flex-1 flex-col">
-
+          {/* Painel da direita */}
+          <section className="flex min-w-0 flex-1 flex-col overflow-hidden">
             <Header />
 
-            <main className="flex-1">
+            {/* Conteúdo com rolagem própria */}
+            <main className="flex-1 overflow-y-auto">
               {children}
             </main>
-
           </section>
-
         </div>
-
       </body>
     </html>
   );
