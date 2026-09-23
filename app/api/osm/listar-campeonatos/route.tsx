@@ -1,30 +1,44 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 
-export async function GET(request: NextRequest) {
+export const dynamic = "force-dynamic";
+
+export async function GET() {
   try {
-    // Busca a lista de ligas do OSM Helper
     const res = await fetch(
       "https://osmhelper.com/api/fetch_leagues.php",
       {
         headers: {
           "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+          Accept: "application/json",
         },
-        next: { revalidate: 86400 }, // Cache de 24 horas
+        cache: "no-store",
       }
     );
 
     if (!res.ok) {
+      console.error(
+        `OSM Helper retornou status ${res.status} ${res.statusText}`
+      );
+
       return NextResponse.json(
-        { error: "Erro ao buscar as ligas na API externa." },
-        { status: res.status }
+        {
+          error: "Erro ao buscar as ligas na API externa.",
+          status: res.status,
+        },
+        { status: 502 }
       );
     }
 
     const data = await res.json();
+
     return NextResponse.json(data);
   } catch (error) {
+    console.error("Erro ao buscar ligas no OSM Helper:", error);
+
     return NextResponse.json(
-      { error: "Falha na conexão do servidor ao buscar ligas." },
+      {
+        error: "Falha na conexão com a API do OSM Helper.",
+      },
       { status: 500 }
     );
   }
