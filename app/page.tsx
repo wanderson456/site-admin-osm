@@ -1,233 +1,165 @@
+
 "use client";
 
+import Link from "next/link";
 import {
   Trophy,
-  Users,
   Shuffle,
   ArrowLeftRight,
   BarChart3,
+  Search,
   ChevronRight,
-  Crown,
+  Sparkles,
 } from "lucide-react";
 
-const ranking = [
+const features = [
   {
-    pos: 1,
-    manager: "Manager A",
-    team: "Liverpool",
-    pts: 21,
+    title: "Campeonatos",
+    description:
+      "Consulte os campeonatos disponíveis e acesse suas equipes e informações.",
+    icon: Trophy,
+    href: "/campeonatos",
   },
   {
-    pos: 2,
-    manager: "Manager B",
-    team: "Barcelona",
-    pts: 18,
+    title: "Sorteio de Times",
+    description:
+      "Organize o sorteio das equipes para os participantes de forma simples e organizada.",
+    icon: Shuffle,
+    href: "/sorteio",
+  },
+  
+  {
+    title: "Transferências",
+    description:
+      "Acompanhe e organize as movimentações de jogadores entre as equipes.",
+    icon: ArrowLeftRight,
+    href: "/transferencias",
   },
   {
-    pos: 3,
-    manager: "Manager C",
-    team: "Real Madrid",
-    pts: 16,
-  },
-  {
-    pos: 4,
-    manager: "Manager D",
-    team: "Bayern",
-    pts: 14,
-  },
-  {
-    pos: 5,
-    manager: "Manager E",
-    team: "Inter",
-    pts: 12,
-  },
-];
-
-const transfers = [
-  {
-    player: "Vinícius Júnior",
-    from: "Real Madrid",
-    to: "Liverpool",
-    manager: "Manager A",
-  },
-  {
-    player: "Rodri",
-    from: "Manchester City",
-    to: "Barcelona",
-    manager: "Manager B",
-  },
-  {
-    player: "Salah",
-    from: "Liverpool",
-    to: "Bayern",
-    manager: "Manager D",
+    title: "Scout",
+    description:
+      "Pesquise jogadores e consulte informações para auxiliar na montagem dos elencos.",
+    icon: Search,
+    href: "/scout",
   },
 ];
 
 export default function Home() {
   return (
-    <div className="p-5 md:p-8">
-      {/* TÍTULO */}
-      <div className="mb-7 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-        <div>
-          <p className="mb-1 text-sm text-gray-500">Temporada 2026/3</p>
-          <h1 className="text-3xl font-bold">Dashboard</h1>
-        </div>
+    <div className="min-h-full p-5 md:p-8">
+      {/* HERO */}
+      <section className="relative mb-8 overflow-hidden rounded-2xl border border-white/10 bg-[#171c1f]">
+        {/* Efeito visual */}
+        <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-emerald-500/10 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-32 -left-24 h-72 w-72 rounded-full bg-emerald-500/5 blur-3xl" />
 
-        <button className="flex items-center justify-center gap-2 rounded-lg bg-emerald-500 px-5 py-3 text-sm font-semibold text-black transition hover:bg-emerald-400">
-          <Shuffle size={18} />
-          Sortear Times
-        </button>
-      </div>
+        <div className="relative p-7 md:p-10">
+          <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-400">
+            <Trophy size={25} />
+          </div>
 
-      {/* CAMPEONATO */}
-      <div className="mb-6 rounded-xl border border-white/10 bg-[#171c1f] p-5">
-        <div className="mb-5 flex items-center justify-between">
-          <div>
-            <p className="text-xs uppercase tracking-wide text-gray-500">
-              Campeonato
+          <div className="max-w-3xl">
+            <div className="mb-3 flex items-center gap-2 text-sm font-medium text-emerald-400">
+              <Sparkles size={16} />
+              <span>OSM Group Admin</span>
+            </div>
+
+            <h1 className="text-3xl font-bold tracking-tight md:text-4xl">
+              Administração de campeonatos do OSM
+            </h1>
+
+            <p className="mt-4 max-w-2xl text-sm leading-6 text-gray-400 md:text-base">
+              Uma ferramenta para facilitar a organização dos seus campeonatos
+              no Online Soccer Manager. Centralize sorteios, rankings,
+              transferências, Scout e informações dos campeonatos em um único
+              lugar.
             </p>
-            <h2 className="mt-1 text-xl font-bold">Campeonato Brasileiro</h2>
-          </div>
 
-          <div className="hidden items-center gap-2 rounded-full bg-emerald-500/10 px-3 py-1.5 text-xs text-emerald-400 sm:flex">
-            <span className="h-2 w-2 rounded-full bg-emerald-400" />
-            Em andamento
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-          <Stat
-            label="Managers"
-            value="12"
-            icon={<Users size={19} />}
-          />
-          <Stat
-            label="Rodada"
-            value="8"
-            icon={<Trophy size={19} />}
-          />
-          <Stat
-            label="Jogos"
-            value="84"
-            icon={<BarChart3 size={19} />}
-          />
-          <Stat
-            label="Transferências"
-            value="37"
-            icon={<ArrowLeftRight size={19} />}
-          />
-        </div>
-      </div>
-
-      {/* DUAS COLUNAS */}
-      <div className="grid gap-6 xl:grid-cols-2">
-        {/* CLASSIFICAÇÃO */}
-        <div className="rounded-xl border border-white/10 bg-[#171c1f]">
-          <div className="flex items-center justify-between border-b border-white/10 p-5">
-            <div>
-              <h2 className="font-semibold">Classificação</h2>
-              <p className="text-xs text-gray-500">Campeonato atual</p>
-            </div>
-
-            <button className="flex items-center gap-1 text-xs text-emerald-400">
-              Ver completa
-              <ChevronRight size={15} />
-            </button>
-          </div>
-
-          <div className="divide-y divide-white/5">
-            {ranking.map((item) => (
-              <div
-                key={item.pos}
-                className="flex items-center gap-4 px-5 py-4"
+            <div className="mt-7">
+              <Link
+                href="/campeonatos"
+                className="inline-flex items-center gap-2 rounded-lg bg-emerald-500 px-5 py-3 text-sm font-semibold text-black transition hover:bg-emerald-400"
               >
-                <div
-                  className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold ${
-                    item.pos === 1
-                      ? "bg-yellow-500/20 text-yellow-400"
-                      : "bg-white/5 text-gray-400"
-                  }`}
-                >
-                  {item.pos === 1 ? <Crown size={16} /> : item.pos}
-                </div>
-
-                <div className="flex-1">
-                  <p className="text-sm font-medium">{item.manager}</p>
-                  <p className="text-xs text-gray-500">{item.team}</p>
-                </div>
-
-                <div className="text-right">
-                  <p className="font-bold">{item.pts}</p>
-                  <p className="text-[10px] uppercase text-gray-600">pontos</p>
-                </div>
-              </div>
-            ))}
+                Ver Campeonatos
+                <ChevronRight size={18} />
+              </Link>
+            </div>
           </div>
         </div>
+      </section>
 
-        {/* TRANSFERÊNCIAS */}
-        <div className="rounded-xl border border-white/10 bg-[#171c1f]">
-          <div className="flex items-center justify-between border-b border-white/10 p-5">
-            <div>
-              <h2 className="font-semibold">Últimas transferências</h2>
-              <p className="text-xs text-gray-500">Movimentações recentes</p>
-            </div>
+      {/* FUNCIONALIDADES */}
+      <section>
+        <div className="mb-5">
+          <p className="text-xs font-semibold uppercase tracking-wider text-emerald-400">
+            Funcionalidades
+          </p>
 
-            <button className="flex items-center gap-1 text-xs text-emerald-400">
-              Ver todas
-              <ChevronRight size={15} />
-            </button>
-          </div>
+          <h2 className="mt-1 text-xl font-bold">
+            Tudo o que você precisa para organizar seu grupo
+          </h2>
 
-          <div className="divide-y divide-white/5">
-            {transfers.map((transfer) => (
-              <div key={transfer.player} className="px-5 py-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-semibold">{transfer.player}</p>
-                    <p className="mt-1 text-xs text-gray-500">
-                      {transfer.from}
-                      <span className="mx-2 text-emerald-400">→</span>
-                      {transfer.to}
-                    </p>
+          <p className="mt-1 text-sm text-gray-500">
+            Acesse rapidamente as principais ferramentas do sistema.
+          </p>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {features.map((feature) => {
+            const Icon = feature.icon;
+
+            return (
+              <Link
+                key={feature.title}
+                href={feature.href}
+                className="group rounded-xl border border-white/10 bg-[#171c1f] p-5 transition hover:border-emerald-500/30 hover:bg-[#1a2023]"
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-400 transition group-hover:bg-emerald-500/15">
+                    <Icon size={20} />
                   </div>
 
-                  <ArrowLeftRight
-                    size={17}
-                    className="text-gray-600"
+                  <ChevronRight
+                    size={18}
+                    className="text-gray-600 transition group-hover:translate-x-1 group-hover:text-emerald-400"
                   />
                 </div>
 
-                <p className="mt-2 text-[11px] text-gray-600">
-                  Contratado por {transfer.manager}
+                <h3 className="mt-5 font-semibold">{feature.title}</h3>
+
+                <p className="mt-2 text-sm leading-5 text-gray-500">
+                  {feature.description}
                 </p>
-              </div>
-            ))}
-          </div>
+              </Link>
+            );
+          })}
         </div>
-      </div>
+      </section>
+
+      {/* SOBRE O SISTEMA */}
+      <section className="mt-8 rounded-xl border border-white/10 bg-[#171c1f] p-6 md:p-7">
+        <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+          <div className="max-w-3xl">
+            <h2 className="font-semibold">Organize seu campeonato de forma simples</h2>
+
+            <p className="mt-2 text-sm leading-6 text-gray-500">
+              O OSM Group Admin foi desenvolvido para reunir em um só lugar
+              ferramentas que ajudam na administração das competições,
+              facilitando o acesso às equipes, jogadores, sorteios,
+              classificações e movimentações do campeonato.
+            </p>
+          </div>
+
+          <Link
+            href="/campeonatos"
+            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg border border-white/10 px-4 py-2.5 text-sm font-medium text-gray-300 transition hover:border-emerald-500/30 hover:text-emerald-400"
+          >
+            Explorar Campeonatos
+            <ChevronRight size={16} />
+          </Link>
+        </div>
+      </section>
     </div>
   );
 }
 
-function Stat({
-  label,
-  value,
-  icon,
-}: {
-  label: string;
-  value: string;
-  icon: React.ReactNode;
-}) {
-  return (
-    <div className="rounded-lg bg-[#101416] p-4">
-      <div className="mb-3 flex items-center justify-between">
-        <span className="text-xs text-gray-500">{label}</span>
-        <span className="text-emerald-400">{icon}</span>
-      </div>
-
-      <p className="text-2xl font-bold">{value}</p>
-    </div>
-  );
-}
