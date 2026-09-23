@@ -1,27 +1,25 @@
 import { NextResponse } from "next/server";
-import { Pool } from "pg";
+import { neon } from "@neondatabase/serverless";
 
-const globalForPg = globalThis as unknown as { pgPool: Pool };
-
-const pool =
-  globalForPg.pgPool ||
-  new Pool({
-    connectionString: process.env["DATABASE_URL"],
-    ssl: { rejectUnauthorized: false },
-  });
-
-if (process.env.NODE_ENV !== "production") globalForPg.pgPool = pool;
+// Cria a instância de consulta HTTP do Neon
+const sql = neon(process.env.DATABASE_URL!);
 
 export async function GET() {
-  const client = await pool.connect();
   try {
-    const result = await client.query(
-      `SELECT * FROM "drawRecord" ORDER BY "id" DESC`
-    );
+    const rows = await sql`
+      SELECT 
+        "id",
+        "leagueName",
+        "managerName",
+        "teamName",
+        "hasBonus"
+      FROM "drawRecord" 
+      ORDER BY "id" DESC
+    `;
 
     return NextResponse.json({
       success: true,
-      data: result.rows,
+      data: rows,
     });
   } catch (error: any) {
     console.error("Erro ao buscar histórico:", error);
@@ -29,7 +27,40 @@ export async function GET() {
       { error: error.message || "Erro interno ao buscar dados." },
       { status: 500 }
     );
-  } finally {
-    client.release();
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get("id");
+    const leagueName = searchParams.get("leagueName");
+
+    if (id) {
+      await sql`DELETE FROM "drawRecord" WHERE "id" = ${id}`;
+      return NextResponse.json({
+        success: true,
+        message: "Registro excluído com sucesso.",
+      });
+    }
+
+    if (leagueName) {
+      await sql`DELETE FROM "drawRecord" WHERE "leagueName" = ${leagueName}`;
+      return NextResponse.json({
+        success: true,
+        message: "Sorteios da liga excluídos com sucesso.",
+      });
+    }
+
+    return NextResponse.json(
+      { error: "ID ou Nome da Liga não fornecido." },
+      { status: 400 }
+    );
+  } catch (error: any) {
+    console.error("Erro ao excluir histórico:", error);
+    return NextResponse.json(
+      { error: error.message || "Erro interno ao excluir registro." },
+      { status: 500 }
+    );
   }
 }

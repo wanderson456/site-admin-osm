@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Trophy, Star, X, Loader2 } from "lucide-react";
+import { Trophy, Star, X, Loader2, Trash2 } from "lucide-react";
 
 interface DrawRecord {
   id: string;
@@ -25,6 +25,7 @@ interface HistoricoModalProps {
 export default function HistoricoModal({ isOpen = false, onClose }: HistoricoModalProps) {
   const [groupedRecords, setGroupedRecords] = useState<HistoricoGrouped[]>([]);
   const [loading, setLoading] = useState(false);
+  const [deletingKey, setDeletingKey] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -46,7 +47,7 @@ export default function HistoricoModal({ isOpen = false, onClose }: HistoricoMod
 
       const rawRecords: DrawRecord[] = data.data || [];
 
-      // Agrupa os registros por Nome da Liga
+      // Agrupa os registros pelo Nome da Liga
       const groupedMap = rawRecords.reduce((acc, item) => {
         const key = item.leagueName || "Liga Sem Nome";
         if (!acc[key]) {
@@ -66,6 +67,34 @@ export default function HistoricoModal({ isOpen = false, onClose }: HistoricoMod
       setError(err.message);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleDelete(type: "single" | "league", value: string) {
+    const confirmMsg =
+      type === "league"
+        ? `Tem certeza que deseja apagar todo o histórico da liga "${value}"?`
+        : "Tem certeza que deseja apagar este item do histórico?";
+
+    if (!confirm(confirmMsg)) return;
+
+    setDeletingKey(value);
+    try {
+      const param = type === "league" ? `leagueName=${encodeURIComponent(value)}` : `id=${value}`;
+      const res = await fetch(`/api/osm/historico?${param}`, {
+        method: "DELETE",
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Erro ao excluir do histórico.");
+      }
+
+      await fetchHistorico();
+    } catch (err: any) {
+      alert("Erro ao excluir: " + err.message);
+    } finally {
+      setDeletingKey(null);
     }
   }
 
@@ -117,9 +146,25 @@ export default function HistoricoModal({ isOpen = false, onClose }: HistoricoMod
                       {group.leagueName}
                     </span>
                   </div>
-                  <span className="text-xs text-gray-400 bg-white/5 px-2.5 py-1 rounded-full border border-white/5">
-                    {group.items.length} participante(s)
-                  </span>
+
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs text-gray-400 bg-white/5 px-2.5 py-1 rounded-full border border-white/5">
+                      {group.items.length} participante(s)
+                    </span>
+
+                    <button
+                      onClick={() => handleDelete("league", group.leagueName)}
+                      disabled={deletingKey === group.leagueName}
+                      className="text-gray-500 hover:text-red-400 transition p-1 rounded hover:bg-white/5"
+                      title="Excluir todo o histórico desta liga"
+                    >
+                      {deletingKey === group.leagueName ? (
+                        <Loader2 size={16} className="animate-spin" />
+                      ) : (
+                        <Trash2 size={16} />
+                      )}
+                    </button>
+                  </div>
                 </div>
 
                 {/* Tabela da Liga (Técnico e Time na mesma linha) */}
@@ -130,6 +175,7 @@ export default function HistoricoModal({ isOpen = false, onClose }: HistoricoMod
                         <th className="px-4 py-3">Técnico</th>
                         <th className="px-4 py-3">Time Sorteado</th>
                         <th className="px-4 py-3 text-center">Bônus</th>
+                        <th className="px-4 py-3 text-right">Ações</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-white/5 text-gray-300">
@@ -152,6 +198,20 @@ export default function HistoricoModal({ isOpen = false, onClose }: HistoricoMod
                             ) : (
                               <span className="text-xs text-gray-500">Não</span>
                             )}
+                          </td>
+                          <td className="px-4 py-3.5 text-right">
+                            <button
+                              onClick={() => handleDelete("single", record.id)}
+                              disabled={deletingKey === record.id}
+                              className="text-gray-500 hover:text-red-400 transition p-1"
+                              title="Excluir esta linha"
+                            >
+                              {deletingKey === record.id ? (
+                                <Loader2 size={14} className="animate-spin" />
+                              ) : (
+                                <Trash2 size={14} />
+                              )}
+                            </button>
                           </td>
                         </tr>
                       ))}

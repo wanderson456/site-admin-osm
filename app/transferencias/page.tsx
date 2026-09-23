@@ -1,701 +1,896 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import {
-  ArrowRightLeft,
-  ShieldAlert,
-  Sliders,
-  Users,
-  CheckCircle2,
-  Trophy,
-  Plus,
-  Trash2,
-  Vote,
-  RefreshCw,
-  Sparkles,
-  History,
-  UserCheck,
-  Check,
-  PlusCircle,
-  MinusCircle,
-} from "lucide-react";
+import { useEffect, useState, useMemo } from "react";
 
-interface OsmLeague {
-  id: number | string;
+interface Manager {
+  id: string;
   name: string;
+  email: string;
 }
 
-interface ManagerRule {
+interface PollVote {
   id: string;
-  managerName: string;
-  transfersUsed: number;
-  maxOverSigned: number;
-  maxTrainingOver: number;
+  pollId: string;
+  managerId: string;
+  managerName?: string;
+  championshipChoice: string;
+  maxOverallTurn1: number;
+  maxOverallTurn2: number;
+  maxPurchasesPerManager: number;
+  tieBreakChoice?: string; // Voto de desempate se necessário
 }
 
-interface PollOption {
+interface TransferRecord {
   id: string;
-  text: string;
-}
-
-interface Poll {
-  id: string;
-  turn: "1º Turno" | "2º Turno";
-  title: string;
-  options: PollOption[];
-  votes: Record<string, string>; // { "Nome do Técnico": "ID da Opção Votada" }
-  active: boolean;
-  date: string;
+  pollId: string;
+  managerId: string;
+  managerName?: string;
+  playerName: string;
+  playerOverall: number;
+  turn: number;
+  createdAt: string;
 }
 
 export default function TransferenciasPage() {
-  const [leagues, setLeagues] = useState<OsmLeague[]>([]);
-  const [loadingLeagues, setLoadingLeagues] = useState(false);
-  const [selectedLeagueId, setSelectedLeagueId] = useState("");
+  // Sessão do Treinador
+  const [manager, setManager] = useState<Manager | null>(null);
 
-  const [currentTurn, setCurrentTurn] = useState<"1º Turno" | "2º Turno">("1º Turno");
+  // Formulário de Autenticação
+  const [authMode, setAuthMode] = useState<"login" | "register">("login");
+  const [authName, setAuthName] = useState("");
+  const [authEmail, setAuthEmail] = useState("");
+  const [authPassword, setAuthPassword] = useState("");
+  const [authLoading, setAuthLoading] = useState(false);
 
-  const [globalRules, setGlobalRules] = useState({
-    maxTransfers: 5,
-    maxOverSignLimit: 85,
-    maxTrainingLimit: 95,
-  });
+  // Modais
+  const [isVoteModalOpen, setIsVoteModalOpen] = useState(false);
+  const [isPurchaseModalOpen, setIsPurchaseModalOpen] = useState(false);
 
-  const [turn2Rules, setTurn2Rules] = useState({
-    extraTransfers: 3,
-    extraOverSign: 5,
-    extraTraining: 3,
-  });
+  // Votos da Enquete
+  const [votes, setVotes] = useState<PollVote[]>([]);
 
-  const [managers, setManagers] = useState<ManagerRule[]>([]);
-  const [newManagerName, setNewManagerName] = useState("");
+  // Form de Voto
+  const [championshipChoice, setChampionshipChoice] = useState("Premier League");
+  const [maxOverallTurn1, setMaxOverallTurn1] = useState(85);
+  const [maxOverallTurn2, setMaxOverallTurn2] = useState(90);
+  const [maxPurchases, setMaxPurchases] = useState(3);
+  const [selectedTieBreak, setSelectedTieBreak] = useState<string>("");
+  const [submittingVote, setSubmittingVote] = useState(false);
 
-  // Sistema de Enquetes e Votações
-  const [polls, setPolls] = useState<Poll[]>([]);
-  const [newPollTitle, setNewPollTitle] = useState("");
-  const [newPollOptions, setNewPollOptions] = useState("Aprovar limite extra, Rejeitar limite extra");
+  // Compras
+  const [transfers, setTransfers] = useState<TransferRecord[]>([]);
+  const [loadingTransfers, setLoadingTransfers] = useState(true);
+  const [playerName, setPlayerName] = useState("");
+  const [playerOverall, setPlayerOverall] = useState(80);
+  const [turn, setTurn] = useState(1);
+  const [submittingTransfer, setSubmittingTransfer] = useState(false);
 
-  // Sessão do Usuário Logado ("admin" ou o nome exato do técnico cadastrado)
-  const [loggedInUser, setLoggedInUser] = useState<string>("admin");
+  // Feedback
+  const [message, setMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
 
-  const [isClient, setIsClient] = useState(false);
-
-  // Carregar dados salvos
+  // Carrega a sessão guardada
   useEffect(() => {
-    setIsClient(true);
-    const savedLeague = localStorage.getItem("osm_trans_league");
-    const savedRules = localStorage.getItem("osm_trans_rules");
-    const savedTurn2 = localStorage.getItem("osm_trans_turn2");
-    const savedManagers = localStorage.getItem("osm_trans_managers");
-    const savedTurn = localStorage.getItem("osm_trans_turn");
-    const savedPolls = localStorage.getItem("osm_trans_polls");
-    const savedSession = localStorage.getItem("osm_trans_session");
-
-    if (savedLeague) setSelectedLeagueId(savedLeague);
-    if (savedRules) { try { setGlobalRules(JSON.parse(savedRules)); } catch (e) {} }
-    if (savedTurn2) { try { setTurn2Rules(JSON.parse(savedTurn2)); } catch (e) {} }
-    if (savedManagers) { try { setManagers(JSON.parse(savedManagers)); } catch (e) {} }
-    if (savedTurn) setCurrentTurn(savedTurn as any);
-    if (savedPolls) { try { setPolls(JSON.parse(savedPolls)); } catch (e) {} }
-    if (savedSession) setLoggedInUser(savedSession);
-  }, []);
-
-  // Salvar no localStorage
-  useEffect(() => {
-    if (!isClient) return;
-    localStorage.setItem("osm_trans_league", selectedLeagueId);
-    localStorage.setItem("osm_trans_rules", JSON.stringify(globalRules));
-    localStorage.setItem("osm_trans_turn2", JSON.stringify(turn2Rules));
-    localStorage.setItem("osm_trans_managers", JSON.stringify(managers));
-    localStorage.setItem("osm_trans_turn", currentTurn);
-    localStorage.setItem("osm_trans_polls", JSON.stringify(polls));
-    localStorage.setItem("osm_trans_session", loggedInUser);
-  }, [selectedLeagueId, globalRules, turn2Rules, managers, currentTurn, polls, loggedInUser, isClient]);
-
-  // Buscar Ligas
-  useEffect(() => {
-    async function fetchLeagues() {
-      setLoadingLeagues(true);
+    const savedManager = localStorage.getItem("osm_manager");
+    if (savedManager) {
       try {
-        const res = await fetch("/api/osm/listar-campeonatos");
-        if (res.ok) {
-          const data = await res.json();
-          const leagueList = Array.isArray(data) ? data : data.leagues || [];
-          setLeagues(
-            leagueList.map((l: any) => ({
-              id: l.id || l.league_id,
-              name: l.name || l.league_name,
-            }))
-          );
-        }
-      } catch (err) {
-        console.error("Erro ao buscar ligas:", err);
-      } finally {
-        setLoadingLeagues(false);
+        const parsed = JSON.parse(savedManager);
+        setManager(parsed);
+      } catch {
+        localStorage.removeItem("osm_manager");
       }
     }
-    fetchLeagues();
   }, []);
 
-  const handleAddManager = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newManagerName.trim()) return;
+  useEffect(() => {
+    fetchPollData();
+    fetchTransfersData();
+  }, [manager]);
 
-    const activeMaxOverSign = currentTurn === "2º Turno" ? globalRules.maxOverSignLimit + turn2Rules.extraOverSign : globalRules.maxOverSignLimit;
-    const activeMaxTraining = currentTurn === "2º Turno" ? globalRules.maxTrainingLimit + turn2Rules.extraTraining : globalRules.maxTrainingLimit;
-
-    const newItem: ManagerRule = {
-      id: Date.now().toString(),
-      managerName: newManagerName.trim(),
-      transfersUsed: 0,
-      maxOverSigned: activeMaxOverSign,
-      maxTrainingOver: activeMaxTraining,
-    };
-
-    setManagers([...managers, newItem]);
-    setNewManagerName("");
+  const notify = (text: string, type: "success" | "error") => {
+    setMessage({ text, type });
+    setTimeout(() => setMessage(null), 5000);
   };
 
-  const handleRemoveManager = (id: string) => {
-    setManagers(managers.filter((m) => m.id !== id));
-  };
+  // CÁLCULO DA APURAÇÃO COM DETEÇÃO DE EMPATE E DESEMPATE
+  const pollSummary = useMemo(() => {
+    if (votes.length === 0) {
+      return {
+        winningLeague: "Pendente (Aguardando Votos)",
+        leagueCounts: {},
+        isTie: false,
+        tiedLeagues: [] as string[],
+        avgMaxTurn1: 85,
+        avgMaxTurn2: 90,
+        avgMaxPurchases: 3,
+        totalVotes: 0,
+      };
+    }
 
-  const handleUpdateManagerField = (id: string, field: keyof ManagerRule, value: number) => {
-    setManagers(
-      managers.map((m) => (m.id === id ? { ...m, [field]: value } : m))
-    );
-  };
+    // Contagem de votos por liga
+    const counts: Record<string, number> = {};
+    votes.forEach((v) => {
+      const league = v.championshipChoice.trim();
+      counts[league] = (counts[league] || 0) + 1;
+    });
 
-  const handleCreatePoll = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newPollTitle.trim()) return;
+    // Encontrar número máximo de votos
+    let maxVotesCount = 0;
+    Object.values(counts).forEach((count) => {
+      if (count > maxVotesCount) maxVotesCount = count;
+    });
 
-    const optionsArray = newPollOptions
-      .split(",")
-      .map((opt, index) => ({ id: `opt_${index + 1}`, text: opt.trim() }))
-      .filter((opt) => opt.text.length > 0);
+    // Ligas que alcançaram o número máximo de votos
+    const topLeagues = Object.entries(counts)
+      .filter(([_, count]) => count === maxVotesCount)
+      .map(([league]) => league);
 
-    const newPoll: Poll = {
-      id: Date.now().toString(),
-      turn: currentTurn,
-      title: newPollTitle.trim(),
-      options: optionsArray,
-      votes: {},
-      active: true,
-      date: new Date().toLocaleDateString("pt-BR"),
-    };
+    const isTie = topLeagues.length > 1;
 
-    setPolls([newPoll, ...polls]);
-    setNewPollTitle("");
-  };
+    let finalWinner = "";
 
-  const handleVote = (pollId: string, optionId: string) => {
-    if (loggedInUser === "admin") return;
+    if (isTie) {
+      // Tentar resolver empate via votos de desempate (tieBreakChoice)
+      const tieBreakCounts: Record<string, number> = {};
+      topLeagues.forEach((l) => (tieBreakCounts[l] = 0));
 
-    setPolls(
-      polls.map((poll) => {
-        if (poll.id === pollId) {
-          return {
-            ...poll,
-            votes: {
-              ...poll.votes,
-              [loggedInUser]: optionId,
-            },
-          };
+      votes.forEach((v) => {
+        if (v.tieBreakChoice && topLeagues.includes(v.tieBreakChoice)) {
+          tieBreakCounts[v.tieBreakChoice] = (tieBreakCounts[v.tieBreakChoice] || 0) + 1;
         }
-        return poll;
-      })
-    );
-  };
+      });
 
-  const handleToggleTurn = () => {
-    const nextTurn = currentTurn === "1º Turno" ? "2º Turno" : "1º Turno";
-    setCurrentTurn(nextTurn);
+      let maxTB = -1;
+      Object.entries(tieBreakCounts).forEach(([league, tbVotes]) => {
+        if (tbVotes > maxTB && tbVotes > 0) {
+          maxTB = tbVotes;
+          finalWinner = league;
+        }
+      });
 
-    if (nextTurn === "2º Turno") {
-      setManagers(
-        managers.map((m) => ({
-          ...m,
-          maxOverSigned: globalRules.maxOverSignLimit + turn2Rules.extraOverSign,
-          maxTrainingOver: globalRules.maxTrainingLimit + turn2Rules.extraTraining,
-        }))
-      );
+      // Se ainda não houve desempate decidido por votos, mantemos flag de empate
+      if (!finalWinner) {
+        finalWinner = `Empate entre: ${topLeagues.join(" vs ")}`;
+      }
+    } else {
+      finalWinner = topLeagues[0] || "Pendente";
+    }
+
+    // Filtrar os votos da liga vencedora ou das empatadas para calcular as médias das regras
+    const relevantVotes = isTie && !finalWinner.includes("Empate")
+      ? votes.filter((v) => v.championshipChoice.trim() === finalWinner || v.tieBreakChoice === finalWinner)
+      : votes.filter((v) => topLeagues.includes(v.championshipChoice.trim()));
+
+    let sumTurn1 = 0;
+    let sumTurn2 = 0;
+    let sumPurchases = 0;
+
+    relevantVotes.forEach((v) => {
+      sumTurn1 += v.maxOverallTurn1;
+      sumTurn2 += v.maxOverallTurn2;
+      sumPurchases += v.maxPurchasesPerManager;
+    });
+
+    const count = relevantVotes.length || 1;
+
+    return {
+      winningLeague: finalWinner,
+      leagueCounts: counts,
+      isTie: isTie && finalWinner.startsWith("Empate"),
+      tiedLeagues: topLeagues,
+      avgMaxTurn1: Math.round(sumTurn1 / count),
+      avgMaxTurn2: Math.round(sumTurn2 / count),
+      avgMaxPurchases: Math.round(sumPurchases / count),
+      totalVotes: votes.length,
+    };
+  }, [votes]);
+
+  // Submissão do Login / Registo
+  const handleAuthSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthLoading(true);
+
+    const endpoint = authMode === "login" ? "/api/osm/login" : "/api/osm/register";
+    const payload =
+      authMode === "login"
+        ? { email: authEmail, password: authPassword }
+        : { name: authName, email: authEmail, password: authPassword };
+
+    try {
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        const loggedUser = data.user;
+        setManager(loggedUser);
+        localStorage.setItem("osm_manager", JSON.stringify(loggedUser));
+        notify(data.message || "Autenticado com sucesso!", "success");
+        setAuthName("");
+        setAuthEmail("");
+        setAuthPassword("");
+        setIsVoteModalOpen(true);
+      } else {
+        notify(data.error || "Erro na autenticação.", "error");
+      }
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : "Erro de conexão com o servidor.";
+      notify(errorMessage, "error");
+    } finally {
+      setAuthLoading(false);
     }
   };
 
-  const effectiveMaxTransfers = currentTurn === "2º Turno" ? globalRules.maxTransfers + turn2Rules.extraTransfers : globalRules.maxTransfers;
-  const effectiveMaxOverSign = currentTurn === "2º Turno" ? globalRules.maxOverSignLimit + turn2Rules.extraOverSign : globalRules.maxOverSignLimit;
-  const effectiveMaxTraining = currentTurn === "2º Turno" ? globalRules.maxTrainingLimit + turn2Rules.extraTraining : globalRules.maxTrainingLimit;
+  const handleLogout = () => {
+    setManager(null);
+    localStorage.removeItem("osm_manager");
+    setIsVoteModalOpen(false);
+    setIsPurchaseModalOpen(false);
+    notify("Sessão encerrada.", "success");
+  };
 
-  // Dados do técnico logado
-  const currentManagerData = managers.find((m) => m.managerName === loggedInUser);
+  // Buscar Votos
+  const fetchPollData = async () => {
+    try {
+      const url = manager?.id
+        ? `/api/osm/transferencias?managerId=${manager.id}`
+        : "/api/osm/transferencias";
+      const res = await fetch(url);
+      const data = await res.json();
+
+      if (data.success) {
+        setVotes(data.votes || []);
+        if (data.myVote) {
+          setChampionshipChoice(data.myVote.championshipChoice);
+          setMaxOverallTurn1(data.myVote.maxOverallTurn1);
+          setMaxOverallTurn2(data.myVote.maxOverallTurn2);
+          setMaxPurchases(data.myVote.maxPurchasesPerManager);
+          if (data.myVote.tieBreakChoice) {
+            setSelectedTieBreak(data.myVote.tieBreakChoice);
+          }
+        }
+      }
+    } catch (err: unknown) {
+      console.error("Erro ao carregar enquete:", err);
+    }
+  };
+
+  // Buscar Compras
+  const fetchTransfersData = async () => {
+    setLoadingTransfers(true);
+    try {
+      const res = await fetch("/api/osm/compras");
+      const data = await res.json();
+      if (data.success) {
+        setTransfers(data.transfers || []);
+      }
+    } catch (err: unknown) {
+      console.error("Erro ao carregar compras:", err);
+    } finally {
+      setLoadingTransfers(false);
+    }
+  };
+
+  // Submeter Voto (Incluindo Escolha de Desempate se Houver)
+  const handleVoteSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!manager) return notify("Inicie sessão para poder votar.", "error");
+
+    setSubmittingVote(true);
+    try {
+      const res = await fetch("/api/osm/transferencias", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          managerId: manager.id,
+          championshipChoice,
+          maxOverallTurn1,
+          maxOverallTurn2,
+          maxPurchasesPerManager: maxPurchases,
+          tieBreakChoice: pollSummary.isTie ? selectedTieBreak : undefined,
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success) {
+        notify("Voto e preferências registados com sucesso!", "success");
+        setIsVoteModalOpen(false);
+        fetchPollData();
+      } else {
+        notify(data.error || "Erro ao guardar voto.", "error");
+      }
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : "Erro ao votar.";
+      notify(errorMessage, "error");
+    } finally {
+      setSubmittingVote(false);
+    }
+  };
+
+  // Registo de Contratação (Aplica a Regra Decidida)
+  const handleTransferSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!manager) return notify("Inicie sessão para registar compras.", "error");
+
+    const currentMaxOverall = turn === 1 ? pollSummary.avgMaxTurn1 : pollSummary.avgMaxTurn2;
+
+    if (playerOverall > currentMaxOverall) {
+      return notify(
+        `Atenção: O Overall do jogador (${playerOverall}) excede o limite estabelecido (${currentMaxOverall} OVR para o Turno ${turn}).`,
+        "error"
+      );
+    }
+
+    setSubmittingTransfer(true);
+
+    try {
+      const res = await fetch("/api/osm/compras", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          managerId: manager.id,
+          playerName,
+          playerOverall,
+          turn,
+          maxPurchases: pollSummary.avgMaxPurchases,
+          maxOverall: currentMaxOverall,
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success) {
+        notify("Jogador registado com sucesso!", "success");
+        setPlayerName("");
+        setIsPurchaseModalOpen(false);
+        fetchTransfersData();
+      } else {
+        notify(data.error || "Erro ao registar jogador.", "error");
+      }
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : "Erro ao registar compra.";
+      notify(errorMessage, "error");
+    } finally {
+      setSubmittingTransfer(false);
+    }
+  };
+
+  // Eliminar Contratação
+  const handleDeleteTransfer = async (id: string) => {
+    try {
+      const res = await fetch(`/api/osm/compras?id=${id}`, { method: "DELETE" });
+      const data = await res.json();
+      if (data.success) {
+        notify("Contratação removida!", "success");
+        fetchTransfersData();
+      } else {
+        notify(data.error || "Erro ao remover.", "error");
+      }
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : "Erro ao eliminar.";
+      notify(errorMessage, "error");
+    }
+  };
+
+  // Agrupamento de Transferências por Treinador
+  const transfersByManager = transfers.reduce<
+    Record<string, { managerName: string; managerId: string; items: TransferRecord[] }>
+  >((acc, t) => {
+    const key = t.managerId || t.managerName || "desconhecido";
+    if (!acc[key]) {
+      acc[key] = {
+        managerId: t.managerId,
+        managerName: t.managerName || "Treinador Sem Nome",
+        items: [],
+      };
+    }
+    acc[key].items.push(t);
+    return acc;
+  }, {});
 
   return (
-    <div className="p-5 md:p-8 max-w-7xl mx-auto">
-      {/* CABEÇALHO COM LOGIN RESTRITO AOS TÉCNICOS CADASTRADOS */}
-      <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <p className="mb-1 text-sm text-emerald-400 font-medium">OSM BAD BOYS</p>
-          <h1 className="text-3xl font-bold text-white flex items-center gap-2">
-            <ArrowRightLeft className="text-emerald-400" /> Votação & Controle de Transferências
-          </h1>
-          <p className="mt-2 text-sm text-gray-400">
-            {loggedInUser === "admin" 
-              ? "Modo Administrador: Gerencie limites, turnos e cadastre os participantes."
-              : `Olá, ${loggedInUser}! Alimente suas contratações e vote nas enquetes ativas.`}
-          </p>
-        </div>
-
-        {/* LOGIN DE TÉCNICOS CADASTRADOS */}
-        <div className="flex items-center gap-3 bg-[#171c1f] border border-white/10 p-3 rounded-xl shadow-lg">
-          <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400">
-            <UserCheck size={20} />
+    <div className="min-h-screen bg-slate-950 text-slate-100 p-4 md:p-8 font-sans">
+      <div className="max-w-6xl mx-auto space-y-8">
+        
+        {/* CABEÇALHO */}
+        <header className="flex flex-col md:flex-row justify-between items-center bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-xl gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-emerald-400">Liga OSM - Mercado & Plantéis</h1>
+            <p className="text-sm text-slate-400">1º Votação da Liga ➔ 2º Regras de Overall & Compras</p>
           </div>
-          <div className="flex flex-col gap-1">
-            <span className="text-[11px] text-gray-400">Acessar como:</span>
-            <select
-              value={loggedInUser}
-              onChange={(e) => setLoggedInUser(e.target.value)}
-              className="rounded-lg border border-white/10 bg-[#101416] px-3 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500 font-medium"
-            >
-              <option value="admin">⚙️ Administrador Geral</option>
-              {managers.length === 0 ? (
-                <option disabled value="">Nenhum técnico cadastrado ainda</option>
-              ) : (
-                managers.map((m) => (
-                  <option key={m.id} value={m.managerName}>👤 Técnico: {m.managerName}</option>
-                ))
+
+          {manager ? (
+            <div className="flex items-center gap-4 bg-slate-800/60 px-4 py-2 rounded-xl border border-slate-700">
+              <div className="text-right">
+                <span className="block text-xs text-slate-400">Treinador Conectado</span>
+                <span className="font-semibold text-white">{manager.name}</span>
+              </div>
+              <button
+                onClick={handleLogout}
+                className="text-xs bg-red-500/20 text-red-300 hover:bg-red-500/30 px-3 py-1.5 rounded-lg transition"
+              >
+                Sair
+              </button>
+            </div>
+          ) : (
+            <span className="text-xs bg-amber-500/10 text-amber-400 border border-amber-500/20 px-3 py-1.5 rounded-full">
+              Sessão não iniciada
+            </span>
+          )}
+        </header>
+
+        {/* PAINEL DE RESULTADO: ETAPA 1 (LIGA) & ETAPA 2 (REGRAS DE OVERALL) */}
+        <section className="bg-gradient-to-r from-blue-950/60 via-slate-900 to-emerald-950/60 border border-slate-800 p-6 rounded-2xl shadow-xl space-y-6">
+          
+          {/* PASSO 1: DECISÃO DA LIGA / AVISO DE EMPATE */}
+          <div className="border-b border-slate-800/80 pb-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold uppercase tracking-wider text-blue-400 flex items-center gap-1.5">
+                <span>1️⃣</span> 1ª Etapa: Liga Escolhida
+              </span>
+              {pollSummary.isTie && (
+                <span className="text-xs bg-amber-500/20 text-amber-300 border border-amber-500/40 px-3 py-1 rounded-full animate-pulse font-semibold">
+                  ⚠️ Empate Detetado! Vote no Desempate
+                </span>
               )}
-            </select>
-          </div>
-        </div>
-      </div>
-
-      {/* SE O USUÁRIO FOR UM TÉCNICO CADASTRADO */}
-      {loggedInUser !== "admin" && currentManagerData ? (
-        <div className="space-y-6">
-          {/* CARD INDIVIDUAL DO TÉCNICO PARA ALIMENTAR CONTRATAÇÕES */}
-          <div className="rounded-xl border border-emerald-500/40 bg-gradient-to-br from-[#171c1f] to-[#101416] p-6 shadow-xl">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-              <div>
-                <span className="text-xs uppercase tracking-wider text-emerald-400 font-semibold">Meu Painel de Treinador</span>
-                <h2 className="text-2xl font-bold text-white mt-1">{currentManagerData.managerName}</h2>
-              </div>
-              <div className="bg-[#101416] border border-white/10 px-4 py-2 rounded-xl text-center">
-                <span className="text-[11px] text-gray-400 block">Fase Atual</span>
-                <span className="text-sm font-bold text-white">{currentTurn}</span>
-              </div>
             </div>
 
-            <div className="grid gap-6 md:grid-cols-3">
-              {/* CARD DE ALIMENTAR CONTRATAÇÕES */}
-              <div className="rounded-xl border border-white/10 bg-[#101416] p-5 flex flex-col justify-between">
-                <div>
-                  <span className="text-xs text-gray-400 block mb-1">Suas Transferências Feitas</span>
-                  <div className="flex items-center gap-3 my-2">
-                    <button
-                      onClick={() => {
-                        const newVal = Math.max(0, currentManagerData.transfersUsed - 1);
-                        handleUpdateManagerField(currentManagerData.id, "transfersUsed", newVal);
-                      }}
-                      className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-white transition"
-                    >
-                      <MinusCircle size={18} />
-                    </button>
-                    <span className="text-3xl font-bold text-emerald-400">{currentManagerData.transfersUsed}</span>
-                    <button
-                      onClick={() => {
-                        const newVal = currentManagerData.transfersUsed + 1;
-                        handleUpdateManagerField(currentManagerData.id, "transfersUsed", newVal);
-                      }}
-                      className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-white transition"
-                    >
-                      <PlusCircle size={18} />
-                    </button>
-                  </div>
-                </div>
-                <span className="text-xs text-gray-500 mt-2">Limite Máximo: {effectiveMaxTransfers} contratações</span>
-              </div>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <h2 className="text-2xl font-extrabold text-white">
+                Liga Definida:{" "}
+                <span className={pollSummary.isTie ? "text-amber-400" : "text-emerald-400"}>
+                  {pollSummary.winningLeague}
+                </span>
+              </h2>
+              <span className="text-xs text-slate-400 bg-slate-950/80 px-3 py-1.5 rounded-xl border border-slate-800">
+                Total de votos: <strong>{pollSummary.totalVotes}</strong>
+              </span>
+            </div>
 
-              <div className="rounded-xl border border-white/10 bg-[#101416] p-5 flex flex-col justify-between">
-                <div>
-                  <span className="text-xs text-gray-400 block mb-1">Teto OVER Contratação</span>
-                  <p className="text-2xl font-bold text-white mt-2">{currentManagerData.maxOverSigned}</p>
-                </div>
-                <span className="text-xs text-emerald-400 mt-2">Liberado pelo regulamento</span>
-              </div>
-
-              <div className="rounded-xl border border-white/10 bg-[#101416] p-5 flex flex-col justify-between">
-                <div>
-                  <span className="text-xs text-gray-400 block mb-1">Teto OVER Treinamento</span>
-                  <p className="text-2xl font-bold text-white mt-2">{currentManagerData.maxTrainingOver}</p>
-                </div>
-                <span className="text-xs text-emerald-400 mt-2">Liberado pelo regulamento</span>
-              </div>
+            {/* Votação detalhada das Ligas */}
+            <div className="flex flex-wrap gap-2 pt-1">
+              {Object.entries(pollSummary.leagueCounts).map(([league, count]) => {
+                const isTied = pollSummary.tiedLeagues.includes(league);
+                return (
+                  <span
+                    key={league}
+                    className={`text-xs px-3 py-1.5 rounded-lg border transition ${
+                      isTied && pollSummary.isTie
+                        ? "bg-amber-500/10 border-amber-500/40 text-amber-300 font-bold"
+                        : league === pollSummary.winningLeague
+                        ? "bg-emerald-500/10 border-emerald-500/40 text-emerald-300 font-bold"
+                        : "bg-slate-950/40 border-slate-800 text-slate-400"
+                    }`}
+                  >
+                    {league}: <strong>{count} voto(s)</strong> {isTied && pollSummary.isTie && "(Empatada)"}
+                  </span>
+                );
+              })}
             </div>
           </div>
 
-          {/* ENQUETES ATIVAS PARA VOTAR */}
-          <div className="rounded-xl border border-white/10 bg-[#171c1f] p-6">
-            <h2 className="text-lg font-semibold text-white mb-2 flex items-center gap-2">
-              <Vote className="text-emerald-400" /> Enquetes Abertas para Votação ({currentTurn})
-            </h2>
-            <p className="text-xs text-gray-400 mb-6">
-              Clique na opção de sua preferência para registrar seu voto no campeonato.
-            </p>
+          {/* PASSO 2: INFORMAÇÃO DOS LIMITES ESTABELECIDOS DE OVERALL */}
+          <div className="space-y-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+              <span>2️⃣</span> 2ª Etapa: Limites Estabelecidos de Overall & Compras
+            </span>
 
-            {polls.filter((p) => p.active && p.turn === currentTurn).length === 0 ? (
-              <div className="p-8 text-center text-gray-500 text-sm bg-[#101416] rounded-lg">
-                Nenhuma enquete aberta no momento para o {currentTurn}.
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="bg-slate-950/80 p-3.5 rounded-xl border border-slate-800 flex justify-between items-center">
+                <div>
+                  <span className="block text-xs text-slate-400">Limite Max OVR</span>
+                  <span className="text-xs text-slate-500">Turno 1</span>
+                </div>
+                <strong className="text-amber-400 text-xl font-mono">{pollSummary.avgMaxTurn1} OVR</strong>
               </div>
-            ) : (
-              <div className="space-y-6">
-                {polls
-                  .filter((p) => p.active && p.turn === currentTurn)
-                  .map((poll) => {
-                    const myVote = poll.votes[loggedInUser];
 
-                    return (
-                      <div key={poll.id} className="rounded-lg bg-[#101416] p-5 border border-white/5">
-                        <div className="flex items-center justify-between mb-3">
-                          <span className="text-xs font-semibold text-emerald-400 uppercase tracking-wide">
-                            {poll.turn} • Aberta em {poll.date}
-                          </span>
-                        </div>
-                        <h3 className="font-semibold text-white text-base mb-4">{poll.title}</h3>
-
-                        <div className="grid gap-2 md:grid-cols-2">
-                          {poll.options.map((opt) => {
-                            const isSelected = myVote === opt.id;
-                            const totalVotesForOpt = Object.values(poll.votes).filter((v) => v === opt.id).length;
-
-                            return (
-                              <button
-                                key={opt.id}
-                                onClick={() => handleVote(poll.id, opt.id)}
-                                className={`flex items-center justify-between p-3 rounded-lg border text-sm transition ${
-                                  isSelected
-                                    ? "bg-emerald-500/20 border-emerald-500 text-white font-semibold"
-                                    : "bg-white/5 border-white/10 text-gray-300 hover:bg-white/10"
-                                }`}
-                              >
-                                <span className="flex items-center gap-2">
-                                  {isSelected && <Check size={16} className="text-emerald-400" />}
-                                  {opt.text}
-                                </span>
-                                <span className="text-xs text-gray-500 bg-[#101416] px-2 py-1 rounded">
-                                  {totalVotesForOpt} votos
-                                </span>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    );
-                  })}
+              <div className="bg-slate-950/80 p-3.5 rounded-xl border border-slate-800 flex justify-between items-center">
+                <div>
+                  <span className="block text-xs text-slate-400">Limite Max OVR</span>
+                  <span className="text-xs text-slate-500">Turno 2</span>
+                </div>
+                <strong className="text-amber-400 text-xl font-mono">{pollSummary.avgMaxTurn2} OVR</strong>
               </div>
-            )}
+
+              <div className="bg-slate-950/80 p-3.5 rounded-xl border border-slate-800 flex justify-between items-center">
+                <div>
+                  <span className="block text-xs text-slate-400">Limite por Treinador</span>
+                  <span className="text-xs text-slate-500">Total de Contratações</span>
+                </div>
+                <strong className="text-emerald-400 text-xl font-mono">{pollSummary.avgMaxPurchases} Jogadores</strong>
+              </div>
+            </div>
           </div>
-        </div>
-      ) : loggedInUser !== "admin" && !currentManagerData ? (
-        /* CASO O TÉCNICO TENHA SIDO EXCLUÍDO MAS AINDA ESTEJA SELECIONADO */
-        <div className="p-12 text-center bg-[#171c1f] border border-white/10 rounded-xl">
-          <p className="text-red-400 font-medium text-base mb-2">Este técnico não está mais cadastrado no campeonato.</p>
-          <button
-            onClick={() => setLoggedInUser("admin")}
-            className="px-4 py-2 bg-emerald-500 text-black text-xs font-bold rounded-lg hover:bg-emerald-400"
+        </section>
+
+        {/* FEEDBACK */}
+        {message && (
+          <div
+            className={`p-4 rounded-xl font-medium text-sm shadow-md transition-all ${
+              message.type === "success"
+                ? "bg-emerald-950/80 border border-emerald-500/30 text-emerald-300"
+                : "bg-red-950/80 border border-red-500/30 text-red-300"
+            }`}
           >
-            Voltar para o Administrador
-          </button>
-        </div>
-      ) : (
-        /* VISÃO DO ADMINISTRADOR COMPLETA */
-        <div className="space-y-8">
-          <div className="grid gap-6 lg:grid-cols-3">
-            <div className="rounded-xl border border-white/10 bg-[#171c1f] p-5">
-              <div className="mb-4 flex items-center justify-between">
-                <div className="flex items-center gap-2 font-semibold text-white">
-                  <Trophy className="text-emerald-400" size={20} />
-                  <span>Campeonato Ativo</span>
-                </div>
+            {message.text}
+          </div>
+        )}
+
+        {/* LOGIN / REGISTO */}
+        {!manager ? (
+          <section className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <h2 className="text-lg font-bold text-slate-200">
+                {authMode === "login" ? "Entrar na Conta" : "Criar Nova Conta"}
+              </h2>
+              <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs">
                 <button
-                  onClick={handleToggleTurn}
-                  className="text-xs bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 px-2.5 py-1 rounded-lg font-semibold hover:bg-emerald-500/30 transition flex items-center gap-1"
+                  onClick={() => setAuthMode("login")}
+                  className={`px-3 py-1.5 rounded-lg transition ${
+                    authMode === "login"
+                      ? "bg-emerald-600 text-white font-semibold"
+                      : "text-slate-400 hover:text-slate-200"
+                  }`}
                 >
-                  <RefreshCw size={12} /> Alternar Turno ({currentTurn})
+                  Entrar
+                </button>
+                <button
+                  onClick={() => setAuthMode("register")}
+                  className={`px-3 py-1.5 rounded-lg transition ${
+                    authMode === "register"
+                      ? "bg-emerald-600 text-white font-semibold"
+                      : "text-slate-400 hover:text-slate-200"
+                  }`}
+                >
+                  Registar
                 </button>
               </div>
-              <label className="mb-1 block text-xs text-gray-400">Selecione a Liga</label>
-              <select
-                value={selectedLeagueId}
-                onChange={(e) => setSelectedLeagueId(e.target.value)}
-                disabled={loadingLeagues}
-                className="w-full rounded-lg border border-white/10 bg-[#101416] px-3 py-2.5 text-sm text-white focus:border-emerald-500 focus:outline-none disabled:opacity-50"
-              >
-                <option value="">{loadingLeagues ? "Carregando ligas..." : "Escolha o campeonato..."}</option>
-                {leagues.map((l) => (
-                  <option key={l.id} value={l.id}>{l.name}</option>
-                ))}
-              </select>
             </div>
 
-            <div className="rounded-xl border border-white/10 bg-[#171c1f] p-5 lg:col-span-2">
-              <div className="mb-4 flex items-center gap-2 font-semibold text-white">
-                <Sliders className="text-emerald-400" size={20} />
-                <span>Configuração de Limites (Base + Bônus 2º Turno)</span>
+            <form onSubmit={handleAuthSubmit} className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {authMode === "register" && (
+                <input
+                  type="text"
+                  placeholder="Nome do Treinador"
+                  value={authName}
+                  onChange={(e) => setAuthName(e.target.value)}
+                  className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-emerald-500"
+                  required
+                />
+              )}
+
+              <input
+                type="email"
+                placeholder="Endereço de E-mail"
+                value={authEmail}
+                onChange={(e) => setAuthEmail(e.target.value)}
+                className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-emerald-500"
+                required
+              />
+
+              <div className={`flex gap-2 ${authMode === "login" ? "md:col-span-2" : ""}`}>
+                <input
+                  type="password"
+                  placeholder="Palavra-passe"
+                  value={authPassword}
+                  onChange={(e) => setAuthPassword(e.target.value)}
+                  className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm w-full focus:outline-none focus:border-emerald-500"
+                  required
+                />
+                <button
+                  type="submit"
+                  disabled={authLoading}
+                  className="bg-emerald-600 hover:bg-emerald-500 text-white font-medium px-5 py-2 rounded-xl text-sm transition disabled:opacity-50 whitespace-nowrap"
+                >
+                  {authLoading ? "A processar..." : authMode === "login" ? "Entrar" : "Registar"}
+                </button>
               </div>
+            </form>
+          </section>
+        ) : (
+          /* BARRA DE AÇÕES DO TREINADOR */
+          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl flex flex-wrap gap-4 items-center justify-between shadow-xl">
+            <div>
+              <h3 className="font-bold text-slate-200">Painel do Treinador</h3>
+              <p className="text-xs text-slate-400">Participe da votação ou adicione contratações ao seu plantel</p>
+            </div>
+            <div className="flex flex-wrap gap-3 w-full sm:w-auto">
+              <button
+                onClick={() => setIsVoteModalOpen(true)}
+                className="flex-1 sm:flex-initial py-2.5 px-4 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-xl text-sm transition shadow-md flex items-center justify-center gap-2"
+              >
+                📊 Votar / Desempate
+              </button>
+              <button
+                onClick={() => setIsPurchaseModalOpen(true)}
+                className="flex-1 sm:flex-initial py-2.5 px-4 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-xl text-sm transition shadow-md flex items-center justify-center gap-2"
+              >
+                🛒 Registar Jogador
+              </button>
+            </div>
+          </div>
+        )}
 
-              <div className="grid gap-4 md:grid-cols-3">
-                <div>
-                  <label className="mb-1 block text-xs text-gray-400">Transações (Base / 2º Turno)</label>
-                  <div className="flex items-center gap-1">
-                    <input
-                      type="number"
-                      value={globalRules.maxTransfers}
-                      onChange={(e) => setGlobalRules({ ...globalRules, maxTransfers: Number(e.target.value) })}
-                      className="w-full rounded-lg border border-white/10 bg-[#101416] px-2 py-2 text-sm text-white"
-                    />
-                    <span className="text-gray-500">+</span>
-                    <input
-                      type="number"
-                      value={turn2Rules.extraTransfers}
-                      onChange={(e) => setTurn2Rules({ ...turn2Rules, extraTransfers: Number(e.target.value) })}
-                      className="w-full rounded-lg border border-white/10 bg-[#101416] px-2 py-2 text-sm text-white"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="mb-1 block text-xs text-gray-400">Teto Contratação (Base / Extra)</label>
-                  <div className="flex items-center gap-1">
-                    <input
-                      type="number"
-                      value={globalRules.maxOverSignLimit}
-                      onChange={(e) => setGlobalRules({ ...globalRules, maxOverSignLimit: Number(e.target.value) })}
-                      className="w-full rounded-lg border border-white/10 bg-[#101416] px-2 py-2 text-sm text-white"
-                    />
-                    <span className="text-gray-500">+</span>
-                    <input
-                      type="number"
-                      value={turn2Rules.extraOverSign}
-                      onChange={(e) => setTurn2Rules({ ...turn2Rules, extraOverSign: Number(e.target.value) })}
-                      className="w-full rounded-lg border border-white/10 bg-[#101416] px-2 py-2 text-sm text-white"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="mb-1 block text-xs text-gray-400">Teto Treino (Base / Extra)</label>
-                  <div className="flex items-center gap-1">
-                    <input
-                      type="number"
-                      value={globalRules.maxTrainingLimit}
-                      onChange={(e) => setGlobalRules({ ...globalRules, maxTrainingLimit: Number(e.target.value) })}
-                      className="w-full rounded-lg border border-white/10 bg-[#101416] px-2 py-2 text-sm text-white"
-                    />
-                    <span className="text-gray-500">+</span>
-                    <input
-                      type="number"
-                      value={turn2Rules.extraTraining}
-                      onChange={(e) => setTurn2Rules({ ...turn2Rules, extraTraining: Number(e.target.value) })}
-                      className="w-full rounded-lg border border-white/10 bg-[#101416] px-2 py-2 text-sm text-white"
-                    />
-                  </div>
-                </div>
-              </div>
+        {/* RELAÇÃO DE TREINADORES E CONTRATAÇÕES */}
+        <section className="space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <h2 className="text-xl font-bold text-slate-200 flex items-center gap-2">
+              <span>👔</span> Plantéis na Liga ({pollSummary.winningLeague})
+            </h2>
+            <div className="flex gap-2 text-xs">
+              <span className="bg-slate-900 border border-slate-800 px-3 py-1 rounded-lg text-amber-400">
+                Turno 1: Max <strong>{pollSummary.avgMaxTurn1} OVR</strong>
+              </span>
+              <span className="bg-slate-900 border border-slate-800 px-3 py-1 rounded-lg text-amber-400">
+                Turno 2: Max <strong>{pollSummary.avgMaxTurn2} OVR</strong>
+              </span>
             </div>
           </div>
 
-          <div className="grid gap-6 lg:grid-cols-2">
-            <div className="rounded-xl border border-white/10 bg-[#171c1f] p-5">
-              <div className="mb-3 flex items-center gap-2 font-semibold text-white">
-                <Vote className="text-emerald-400" size={20} />
-                <span>Criar Nova Enquete ({currentTurn})</span>
+          {loadingTransfers ? (
+            <div className="p-8 text-center bg-slate-900 rounded-2xl border border-slate-800 text-slate-400 text-sm">
+              A carregar lista de treinadores...
+            </div>
+          ) : Object.keys(transfersByManager).length === 0 ? (
+            <div className="p-8 text-center bg-slate-900 rounded-2xl border border-slate-800 text-slate-500 text-sm">
+              Nenhuma contratação registada até ao momento.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {Object.values(transfersByManager).map((group) => {
+                const totalPurchases = group.items.length;
+                const isLimitReached = totalPurchases >= pollSummary.avgMaxPurchases;
+
+                return (
+                  <div
+                    key={group.managerId || group.managerName}
+                    className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4 flex flex-col justify-between"
+                  >
+                    <div>
+                      <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                        <div>
+                          <h3 className="font-bold text-lg text-emerald-400">
+                            {group.managerName}
+                          </h3>
+                          <span className="text-xs text-slate-400">
+                            {totalPurchases} de {pollSummary.avgMaxPurchases} contratações permitidas
+                          </span>
+                        </div>
+                        <span
+                          className={`text-xs px-2.5 py-1 rounded-full font-medium ${
+                            isLimitReached
+                              ? "bg-red-500/10 text-red-400 border border-red-500/20"
+                              : "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                          }`}
+                        >
+                          {isLimitReached ? "Limite Atingido" : "Vagas Abertas"}
+                        </span>
+                      </div>
+
+                      <ul className="divide-y divide-slate-800/60 mt-3">
+                        {group.items.map((item) => (
+                          <li
+                            key={item.id}
+                            className="py-2.5 flex items-center justify-between text-sm hover:bg-slate-800/20 px-2 rounded-lg transition"
+                          >
+                            <div className="flex items-center gap-2">
+                              <span className="text-slate-200 font-medium">{item.playerName}</span>
+                              <span className="text-xs text-slate-500">(Turno {item.turn})</span>
+                            </div>
+
+                            <div className="flex items-center gap-3">
+                              <span className="bg-slate-950 border border-slate-800 px-2.5 py-0.5 rounded text-xs font-mono font-bold text-amber-400">
+                                {item.playerOverall} OVR
+                              </span>
+
+                              {manager?.id === item.managerId && (
+                                <button
+                                  onClick={() => handleDeleteTransfer(item.id)}
+                                  className="text-xs text-red-400 hover:text-red-300 transition"
+                                  title="Remover contratação"
+                                >
+                                  ✕
+                                </button>
+                              )}
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
+
+        {/* MODAL 1: VOTAÇÃO E DESEMPATE */}
+        {isVoteModalOpen && manager && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-lg p-6 shadow-2xl relative space-y-5">
+              <button
+                onClick={() => setIsVoteModalOpen(false)}
+                className="absolute top-4 right-4 text-slate-400 hover:text-white text-lg font-bold"
+              >
+                ✕
+              </button>
+              
+              <div>
+                <h2 className="text-lg font-bold text-slate-100 flex items-center gap-2">
+                  <span>📊</span> Votação de Liga & Limites de Contratação
+                </h2>
+                <p className="text-xs text-slate-400">Defina a sua liga e proponha os limites de overall.</p>
               </div>
-              <form onSubmit={handleCreatePoll} className="space-y-3">
-                <div>
-                  <label className="mb-1 block text-xs text-gray-400">Pergunta da Enquete</label>
-                  <input
-                    type="text"
-                    placeholder="Ex: Aumentar +2 transferências no 2º turno?"
-                    value={newPollTitle}
-                    onChange={(e) => setNewPollTitle(e.target.value)}
-                    className="w-full rounded-lg border border-white/10 bg-[#101416] px-3 py-2 text-sm text-white focus:border-emerald-500 focus:outline-none"
-                  />
+
+              <form onSubmit={handleVoteSubmit} className="space-y-4">
+                
+                {/* CAMPO DE DESEMPATE (SE HOUVER EMPATE NA LIGA) */}
+                {pollSummary.isTie && (
+                  <div className="bg-amber-500/10 border border-amber-500/30 p-3.5 rounded-xl space-y-2">
+                    <label className="block text-xs font-bold uppercase tracking-wider text-amber-400">
+                      ⚡ Desempate Necessário: Escolha entre as Mais Votadas
+                    </label>
+                    <p className="text-xs text-slate-300">
+                      Houve um empate no topo. Por favor, selecione qual destas opções prefere para desempatar:
+                    </p>
+                    <select
+                      value={selectedTieBreak}
+                      onChange={(e) => setSelectedTieBreak(e.target.value)}
+                      className="w-full bg-slate-900 border border-amber-500/40 rounded-xl px-3 py-2 text-sm focus:outline-none text-amber-200 font-semibold"
+                      required
+                    >
+                      <option value="">-- Selecione para Desempatar --</option>
+                      {pollSummary.tiedLeagues.map((league) => (
+                        <option key={league} value={league}>
+                          {league}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {/* 1º PASSO DA VOTAÇÃO GERAL */}
+                <div className="bg-slate-950/60 p-3.5 rounded-xl border border-slate-800 space-y-2">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-blue-400">
+                    1. Sua Preferência Principal de Liga
+                  </label>
+                  <select
+                    value={championshipChoice}
+                    onChange={(e) => setChampionshipChoice(e.target.value)}
+                    className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-emerald-500 text-slate-200"
+                  >
+                    <option value="Premier League">Premier League</option>
+                    <option value="Brasileirão">Brasileirão</option>
+                    <option value="La Liga">La Liga</option>
+                    <option value="Serie A Italy">Serie A Italy</option>
+                    <option value="Champions League">Champions League</option>
+                  </select>
                 </div>
-                <div>
-                  <label className="mb-1 block text-xs text-gray-400">Opções de Voto (separadas por vírgula)</label>
-                  <input
-                    type="text"
-                    value={newPollOptions}
-                    onChange={(e) => setNewPollOptions(e.target.value)}
-                    className="w-full rounded-lg border border-white/10 bg-[#101416] px-3 py-2 text-sm text-white focus:border-emerald-500 focus:outline-none"
-                  />
+
+                {/* 2º PASSO DA VOTAÇÃO */}
+                <div className="bg-slate-950/60 p-3.5 rounded-xl border border-slate-800 space-y-2">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-amber-400">
+                    2. Sugira os Limites de Overall para a Liga
+                  </label>
+                  
+                  <div className="grid grid-cols-3 gap-2 pt-1">
+                    <div>
+                      <label className="block text-[11px] font-medium text-slate-400 mb-1">Max OVR Turno 1</label>
+                      <input
+                        type="number"
+                        value={maxOverallTurn1}
+                        onChange={(e) => setMaxOverallTurn1(Number(e.target.value))}
+                        className="w-full bg-slate-900 border border-slate-800 rounded-xl px-2.5 py-1.5 text-sm focus:outline-none focus:border-emerald-500"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-medium text-slate-400 mb-1">Max OVR Turno 2</label>
+                      <input
+                        type="number"
+                        value={maxOverallTurn2}
+                        onChange={(e) => setMaxOverallTurn2(Number(e.target.value))}
+                        className="w-full bg-slate-900 border border-slate-800 rounded-xl px-2.5 py-1.5 text-sm focus:outline-none focus:border-emerald-500"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-medium text-slate-400 mb-1">Nº Compras</label>
+                      <input
+                        type="number"
+                        value={maxPurchases}
+                        onChange={(e) => setMaxPurchases(Number(e.target.value))}
+                        className="w-full bg-slate-900 border border-slate-800 rounded-xl px-2.5 py-1.5 text-sm focus:outline-none focus:border-emerald-500"
+                        required
+                      />
+                    </div>
+                  </div>
                 </div>
+
                 <button
                   type="submit"
-                  className="w-full flex items-center justify-center gap-2 rounded-lg bg-emerald-500 px-4 py-2.5 text-sm font-semibold text-black hover:bg-emerald-400 transition"
+                  disabled={submittingVote}
+                  className="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium py-2.5 rounded-xl text-sm transition disabled:opacity-50"
                 >
-                  <Sparkles size={16} /> Publicar Enquete
+                  {submittingVote ? "A guardar..." : "Confirmar Voto"}
                 </button>
               </form>
             </div>
-
-            <div className="rounded-xl border border-white/10 bg-[#171c1f] p-5">
-              <div className="mb-3 flex items-center gap-2 font-semibold text-white">
-                <History className="text-emerald-400" size={20} />
-                <span>Resultados Parciais das Enquetes</span>
-              </div>
-
-              {polls.length === 0 ? (
-                <div className="h-40 flex items-center justify-center text-center text-gray-500 text-sm">
-                  Nenhuma enquete criada ainda.
-                </div>
-              ) : (
-                <div className="space-y-3 max-h-56 overflow-y-auto pr-2">
-                  {polls.map((poll) => (
-                    <div key={poll.id} className="p-3 rounded-lg bg-[#101416] border border-white/5 text-xs">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="font-semibold text-emerald-400">{poll.title}</span>
-                        <button
-                          onClick={() => setPolls(polls.filter((p) => p.id !== poll.id))}
-                          className="text-red-400 hover:underline"
-                        >
-                          Excluir
-                        </button>
-                      </div>
-                      <p className="text-gray-400 mb-2">Total de votos computados: {Object.keys(poll.votes).length}</p>
-                      <div className="flex flex-wrap gap-2">
-                        {poll.options.map((opt) => {
-                          const count = Object.values(poll.votes).filter((v) => v === opt.id).length;
-                          return (
-                            <span key={opt.id} className="bg-white/5 px-2 py-1 rounded text-gray-300">
-                              {opt.text}: <strong className="text-emerald-400">{count}</strong>
-                            </span>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
           </div>
+        )}
 
-          <div className="rounded-xl border border-white/10 bg-[#171c1f] p-5">
-            <div className="mb-3 flex items-center gap-2 font-semibold text-white">
-              <Users className="text-emerald-400" size={20} />
-              <span>Cadastrar Técnicos do Campeonato</span>
-            </div>
-            <form onSubmit={handleAddManager} className="flex gap-2 max-w-md">
-              <input
-                type="text"
-                placeholder="Nome do treinador..."
-                value={newManagerName}
-                onChange={(e) => setNewManagerName(e.target.value)}
-                className="w-full rounded-lg border border-white/10 bg-[#101416] px-3 py-2 text-sm text-white placeholder-gray-600 focus:border-emerald-500 focus:outline-none"
-              />
+        {/* MODAL 2: COMPRA DE JOGADOR */}
+        {isPurchaseModalOpen && manager && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-lg p-6 shadow-2xl relative space-y-4">
               <button
-                type="submit"
-                className="flex items-center gap-1 rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-black hover:bg-emerald-400 transition"
+                onClick={() => setIsPurchaseModalOpen(false)}
+                className="absolute top-4 right-4 text-slate-400 hover:text-white text-lg font-bold"
               >
-                <Plus size={16} /> Adicionar
+                ✕
               </button>
-            </form>
-          </div>
+              <div>
+                <h2 className="text-lg font-bold text-slate-100 flex items-center gap-2">
+                  <span>🛒</span> Registar Contratação ({pollSummary.winningLeague})
+                </h2>
+                {/* Informação explícita do limite de Overall */}
+                <p className="text-xs text-amber-400 font-semibold mt-1">
+                  💡 Limite Máximo Permitido: {turn === 1 ? pollSummary.avgMaxTurn1 : pollSummary.avgMaxTurn2} OVR (Turno {turn})
+                </p>
+              </div>
 
-          <div className="rounded-xl border border-white/10 bg-[#171c1f] overflow-hidden">
-            <div className="p-5 border-b border-white/10 flex items-center justify-between">
-              <h2 className="font-semibold text-lg text-white">Painel Geral de Limites ({currentTurn})</h2>
-              <span className="text-xs text-gray-400">{managers.length} treinadores</span>
+              <form onSubmit={handleTransferSubmit} className="space-y-4 pt-1">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-400 mb-1">Nome do Jogador</label>
+                  <input
+                    type="text"
+                    placeholder="Ex: Erling Haaland"
+                    value={playerName}
+                    onChange={(e) => setPlayerName(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-emerald-500"
+                    required
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-400 mb-1">Overall do Jogador</label>
+                    <input
+                      type="number"
+                      value={playerOverall}
+                      onChange={(e) => setPlayerOverall(Number(e.target.value))}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-emerald-500"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-400 mb-1">Turno da Compra</label>
+                    <select
+                      value={turn}
+                      onChange={(e) => setTurn(Number(e.target.value))}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-emerald-500 text-slate-200"
+                    >
+                      <option value={1}>Turno 1 (Max: {pollSummary.avgMaxTurn1} OVR)</option>
+                      <option value={2}>Turno 2 (Max: {pollSummary.avgMaxTurn2} OVR)</option>
+                    </select>
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={submittingTransfer}
+                  className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-medium py-2.5 rounded-xl text-sm transition disabled:opacity-50"
+                >
+                  {submittingTransfer ? "A guardar..." : "Registar Jogador"}
+                </button>
+              </form>
             </div>
-
-            {managers.length === 0 ? (
-              <div className="p-12 text-center text-gray-500 text-sm">
-                Nenhum treinador cadastrado ainda.
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="border-b border-white/10 bg-[#101416] text-xs uppercase tracking-wider text-gray-400">
-                      <th className="p-4">Treinador</th>
-                      <th className="p-4">Transferências Realizadas</th>
-                      <th className="p-4">Teto OVER Contratação</th>
-                      <th className="p-4">Teto OVER Treino</th>
-                      <th className="p-4 text-center">Status</th>
-                      <th className="p-4 text-center">Ações</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-white/5 text-sm">
-                    {managers.map((m) => {
-                      const hasExceededTransfers = m.transfersUsed > effectiveMaxTransfers;
-                      const hasExceededSign = m.maxOverSigned > effectiveMaxOverSign;
-                      const hasExceededTraining = m.maxTrainingOver > effectiveMaxTraining;
-                      const isViolation = hasExceededTransfers || hasExceededSign || hasExceededTraining;
-
-                      return (
-                        <tr key={m.id} className="hover:bg-white/[0.02] transition">
-                          <td className="p-4 font-semibold text-white">{m.managerName}</td>
-                          <td className="p-4">
-                            <div className="flex items-center gap-2">
-                              <input
-                                type="number"
-                                min="0"
-                                value={m.transfersUsed}
-                                onChange={(e) => handleUpdateManagerField(m.id, "transfersUsed", Number(e.target.value))}
-                                className={`w-20 rounded-lg border bg-[#101416] px-2.5 py-1.5 text-sm text-white ${
-                                  hasExceededTransfers ? "border-red-500 text-red-400" : "border-white/10"
-                                }`}
-                              />
-                              <span className="text-xs text-gray-500">/ {effectiveMaxTransfers}</span>
-                            </div>
-                          </td>
-                          <td className="p-4">
-                            <input
-                              type="number"
-                              value={m.maxOverSigned}
-                              onChange={(e) => handleUpdateManagerField(m.id, "maxOverSigned", Number(e.target.value))}
-                              className="w-24 rounded-lg border border-white/10 bg-[#101416] px-2.5 py-1.5 text-sm text-white"
-                            />
-                          </td>
-                          <td className="p-4">
-                            <input
-                              type="number"
-                              value={m.maxTrainingOver}
-                              onChange={(e) => handleUpdateManagerField(m.id, "maxTrainingOver", Number(e.target.value))}
-                              className="w-24 rounded-lg border border-white/10 bg-[#101416] px-2.5 py-1.5 text-sm text-white"
-                            />
-                          </td>
-                          <td className="p-4 text-center">
-                            {isViolation ? (
-                              <span className="inline-flex items-center gap-1 rounded-full bg-red-500/10 px-3 py-1 text-xs font-semibold text-red-400 border border-red-500/30">
-                                <ShieldAlert size={13} /> Infração
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-400 border border-emerald-500/30">
-                                <CheckCircle2 size={13} /> Regular
-                              </span>
-                            )}
-                          </td>
-                          <td className="p-4 text-center">
-                            <button
-                              onClick={() => handleRemoveManager(m.id)}
-                              className="text-gray-500 hover:text-red-400 transition"
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
           </div>
-        </div>
-      )}
+        )}
+
+      </div>
     </div>
   );
 }
