@@ -5,7 +5,7 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   try {
     const res = await fetch(
-      "http://osmhelper.com/api/fetch_leagues.php",
+      "https://osmhelper.com/api/fetch_leagues.php?continent=&allow_transfers=&scoutable=&offset=0&sort=name&order=asc&limit=10000",
       {
         headers: {
           "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
